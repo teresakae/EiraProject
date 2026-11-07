@@ -25,6 +25,6 @@ export function requireInput(value, schema, job) {
   if (!matches(value, schema)
     || (job === 'extract' && !value.text.trim())
     || (job === 'ask' && !value.question.trim())) {
-    throw new AppError(400, 'invalid_request', 'Ada bagian yang belum terbaca. Coba periksa isinya.');
+    throw new AppError(400, 'invalid_request', 'Some content could not be read. Please check it.');
   }
 }

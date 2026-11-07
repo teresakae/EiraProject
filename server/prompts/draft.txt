@@ -10,10 +10,18 @@ she explicitly says how worried she is. Never choose Tidak Diketahui for time
 on her behalf: leave incident_time null if it is unknown.
 Do not mistake a witness's age, name, or gender for the victim's.
 Yes/no fields are JSON booleans, age is an integer, other values are strings.
-Use a short Indonesian description supported by its single quote, the current
-build default. Do not add claims that a quote does not support. Dates remain
+relationship_with_victim is how the person who did it is related to the
+victim, not who experienced it. Its quote must contain the words that name that
+person. "suamiku" means Suami/Istri. Use Diri Sendiri only if she says she did
+it to herself.
+Write description in Indonesian, in the first person as she would say it ("Suami
+saya...", never "her husband" or "suaminya"), in the order she told it, supported
+by its single quote. Do not translate it into English, even though the app's
+replies are English. Do not add claims that a quote does not support. Dates remain
 as she wrote them. Do not mark source IDs: the phone does that in plain code.
 There is no submission action. Return the draft only.
 
 TEAM EXAMPLES — TO FILL IN
 The Indonesian teammates supply their written report-drafting examples here.
+
+Keep schema enum values unchanged in Indonesian. Preserve every source quote exactly, even when it is not English.

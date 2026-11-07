@@ -21,6 +21,17 @@ export const askSchema = object({
   not_sure: { type: 'boolean' },
 });
 
+export const talkSchema = object({
+  reply: text,
+  is_legal_question: { type: 'boolean' },
+  quick_replies: texts,
+  facts: { type: 'array', items: object({
+    category: { type: 'string', enum: ['who', 'what', 'when', 'where'] },
+    value: text,
+    quote: text,
+  }) },
+});
+
 export const dropdowns = {
   is_victim: ['saya_sendiri', 'orang_lain'],
   level_concern: ['sedikit_khawatir', 'khawatir', 'sangat_khawatir'],
@@ -50,6 +61,11 @@ export const requestSchemas = {
   extract: object({ text }),
   ask: object({
     question: text,
+    conversation: { type: 'array', items: object({ role: { type: 'string', enum: ['user', 'assistant'] }, text }) },
+    entries: { type: 'array', items: object({ text, events: { type: 'array', items: eventSchema } }) },
+  }),
+  talk: object({
+    message: nullableText,
     conversation: { type: 'array', items: object({ role: { type: 'string', enum: ['user', 'assistant'] }, text }) },
     entries: { type: 'array', items: object({ text, events: { type: 'array', items: eventSchema } }) },
   }),

@@ -8,5 +8,5 @@ export const limits = {
   jsonBytes: 1_000_000,
   audioBytes: 4_000_000,
   uploadBytes: 4_100_000,
-  outputTokens: { extract: 4096, ask: 1536, draft: 4096 },
+  outputTokens: { extract: 4096, ask: 1536, talk: 1536, draft: 4096 },
 };

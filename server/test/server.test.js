@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
-import { createService, safeCoverTask } from '../lib/service.js';
+import { checkedDraft, createService, isArrestQuestion, safeCoverTask } from '../lib/service.js';
 import { endpoint } from '../lib/http.js';
 import { parseFAQ, loadFAQ } from '../lib/faq.js';
 import { quoteFound } from '../lib/quote-check.js';
 import { runText } from '../lib/model.js';
-import { askSchema, draftSchema, extractSchema, requestSchemas, fieldNames } from '../lib/schemas.js';
+import { askSchema, draftSchema, extractSchema, requestSchemas, fieldNames, talkSchema } from '../lib/schemas.js';
 import { matches } from '../lib/validation.js';
 import { M1, X5, testFAQ } from './fixtures.js';
 
@@ -41,7 +41,7 @@ test('Schemas require every key, reject extras, and keep nullable properties exp
     }
     if (schema.items) visit(schema.items);
   };
-  [extractSchema, askSchema, draftSchema, ...Object.values(requestSchemas)].forEach(visit);
+  [extractSchema, askSchema, talkSchema, draftSchema, ...Object.values(requestSchemas)].forEach(visit);
   assert.equal(fieldNames.length, 17);
   assert.ok(matches(blankDraft(), draftSchema));
   assert.ok(!matches({ text: M1, prompt: 'ignored' }, requestSchemas.extract));
@@ -134,6 +134,22 @@ test('Q1/Q4/Q5: draft drops missing/invented quotes and inferred concern; questi
   assert.equal(client.calls[0].store, false);
 });
 
+test('C27: arrest questions get the fixed FAQ 1 answer with no model call, only while answer 1 is approved', async () => {
+  for (const question of ['If I report this, will my husband be arrested right away?', 'Wait, if i report this, would my husband get arrested?', 'Kalau aku lapor, apa suamiku langsung ditangkap?']) {
+    assert.ok(isArrestQuestion(question), question);
+  }
+  for (const question of ['If he is arrested, who pays for the kids?', 'Can police arrest him if he breaks the protection order?', 'Do I need witnesses?']) {
+    assert.ok(!isArrestQuestion(question), question);
+  }
+  const question = 'If I report this, will my husband be arrested right away?';
+  const fixed = await createService({ faqLoader: async () => parseFAQ(testFAQ([1])), finding: quiet }).ask({ ...askInput(), question });
+  assert.match(fixed.answer, /^No, not automatically\./);
+  assert.deepEqual(fixed.faq_answers_used, [1]);
+  const client = fakeClient([completion(handoffResult)]);
+  const notApproved = await createService({ client, faqLoader: async () => parseFAQ(testFAQ([3])), finding: quiet }).ask({ ...askInput(), question });
+  assert.deepEqual(notApproved.faq_answers_used, []);
+});
+
 test('FA1: unsupported Ask discards model answer; only approved slots enter the prompt', async () => {
   const client = fakeClient([completion({ ...handoffResult, answer: 'untrusted invented legal marker' })]);
   const app = createService({ client, faqLoader: async () => parseFAQ(testFAQ([3])), finding: quiet });
@@ -172,7 +188,7 @@ test('V1: plain code appends caveat for slots 4, 7 and 11', async () => {
   for (const number of [4, 7, 11]) {
     const client = fakeClient([completion({ ...handoffResult, faq_answers_used: [number] })]);
     const result = await createService({ client, faqLoader: async () => parseFAQ(testFAQ([number])), finding: quiet }).ask(askInput());
-    assert.ok(result.answer.endsWith('Bagian ini belum ditinjau pengacara.'));
+    assert.ok(result.answer.endsWith('This part has not been reviewed by a lawyer.'));
   }
 });
 
@@ -247,4 +263,67 @@ test('FA2: build and runtime use an explicit server allowlist and the approved F
   const entries = await readdir(root);
   assert.ok(!entries.includes('.env.local'));
   assert.ok(!entries.includes('test'));
+});
+
+
+test('English output keeps original sources, enum values and privacy boundaries', async () => {
+  const voice = await readFile(new URL('../prompts/voice.txt', import.meta.url), 'utf8');
+  const draft = await readFile(new URL('../prompts/draft.txt', import.meta.url), 'utf8');
+  assert.match(voice, /Every reply she reads is English/);
+  assert.match(draft, /Preserve every source quote exactly/);
+  assert.match(draft, /Write description in Indonesian, in the first person/);
+  assert.match(draft, /relationship_with_victim is how the person who did it is related to the\s+victim/);
+  const app = createService({ faqLoader: async () => [] });
+  const response = await app.ask(askInput());
+  assert.match(response.answer, /cannot answer|do not have an answer/);
+  assert.deepEqual(response.faq_answers_used, []);
+  assert.equal(safeCoverTask('Call your husband', M1), false);
+  assert.equal(safeCoverTask('Find legal help', M1), false);
+  assert.equal(safeCoverTask('Water the fern', M1), true);
+  const stated = "I'm very worried.";
+  const concern = (value, quote) => checkedDraft({ level_concern: { value, quote } }, [stated]).level_concern.value;
+  assert.equal(concern('sangat_khawatir', stated), 'sangat_khawatir');
+  assert.equal(concern('sedikit_khawatir', stated), null);
+  const titles = (await readFile(new URL('../prompts/cover_titles.txt', import.meta.url), 'utf8')).trim().split('\n');
+  assert.ok(titles.length >= 30 && new Set(titles).size === titles.length, 'Cover titles are varied');
+  for (const title of titles) assert.ok(safeCoverTask(title, 'x'), `Unsafe cover title: ${title}`);
+});
+
+const talkInput = (message = 'Dia atasanku di kantor.') => ({ message, conversation: [], entries: [{ text: M1, events: [] }] });
+const talked = (overrides = {}) => ({ reply: 'Has this happened before?', is_legal_question: false, quick_replies: [], facts: [], ...overrides });
+
+test('Talk uses store:false and keeps only facts quoted from her words', async () => {
+  const client = fakeClient([completion(talked({ facts: [
+    { category: 'who', value: 'her supervisor', quote: 'atasanku' },
+    { category: 'where', value: 'invented place', quote: 'di gudang kantor' },
+    { category: 'who', value: 'from AI text', quote: 'Has this happened' },
+  ] }))]);
+  const result = await createService({ client, finding: quiet }).talk({
+    ...talkInput(), conversation: [{ role: 'assistant', text: 'Has this happened' }],
+  });
+  assert.equal(client.calls[0].store, false);
+  assert.deepEqual(result.facts.map((fact) => fact.value), ['her supervisor']);
+});
+
+test('Talk rejects a reply carrying law, then falls back; never returns it', async () => {
+  const client = fakeClient([
+    completion(talked({ reply: 'That fits Pasal 6. Has it happened before?' })),
+    completion(talked({ reply: 'Has it happened before?' })),
+  ]);
+  const result = await createService({ client, finding: quiet }).talk(talkInput());
+  assert.equal(result.reply, 'Has it happened before?');
+  assert.equal(client.calls.length, 2);
+});
+
+test('Talk flags a legal question without needing a reply, and caps quick replies', async () => {
+  const legal = await createService({ client: fakeClient([completion(talked({ reply: '', is_legal_question: true }))]), finding: quiet }).talk(talkInput('Will he go to jail?'));
+  assert.equal(legal.is_legal_question, true);
+  const chips = await createService({ client: fakeClient([completion(talked({ quick_replies: ['Yes', ' ', 'No', 'Maybe'] }))]), finding: quiet }).talk(talkInput());
+  assert.deepEqual(chips.quick_replies, ['Yes', 'No']);
+});
+
+test('Talk accepts a null message at the start and rejects a missing one', async () => {
+  const service = createService({ client: fakeClient([completion(talked())]), finding: quiet });
+  assert.equal((await service.talk(talkInput(null))).reply, 'Has this happened before?');
+  await assert.rejects(service.talk({ conversation: [], entries: [] }));
 });

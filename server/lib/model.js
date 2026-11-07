@@ -38,7 +38,7 @@ export async function runText({ client, job, prompt, input, schema, candidates, 
         phase = 'postprocess';
         return validate(value);
       } catch (error) {
-        const issues = ['task_length', 'task_characters', 'task_private_word', 'task_word_count', 'task_source_overlap', 'empty_reply'];
+        const issues = ['task_length', 'task_characters', 'task_private_word', 'task_word_count', 'task_source_overlap', 'empty_reply', 'talk_reply'];
         finding({ job, model, kind: phase,
           ...(issues.includes(error.outputIssue) ? { issue: error.outputIssue } : {}),
           ...(Number.isInteger(error.status) ? { status: error.status } : {}),
@@ -47,5 +47,5 @@ export async function runText({ client, job, prompt, input, schema, candidates, 
       }
     }
   }
-  throw new AppError(502, 'model_unavailable', 'Aku belum bisa memprosesnya. Kamu bisa coba lagi nanti.');
+  throw new AppError(502, 'model_unavailable', 'I cannot process this right now. You can try again later.');
 }
