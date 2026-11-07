@@ -1,0 +1,2 @@
+// The later demo branch changes this one value to mock.
+EIRA_RELEASE_REPORT_TARGET = real
