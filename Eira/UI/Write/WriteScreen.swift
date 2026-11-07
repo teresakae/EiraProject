@@ -4,11 +4,16 @@ struct WriteScreen: View {
     @Bindable var flow: WriteFlow
     @Bindable var voice: VoiceFlow
     @State private var showsPrivacy = false
+    @FocusState private var isWriting: Bool
+    @State private var draftStartedAt = Date()
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
-                if flow.entries.isEmpty { Text("Tulis apa yang ingin kamu catat.").foregroundStyle(.secondary) }
+                composer
+                if !flow.entries.isEmpty {
+                    Text("Catatanmu").font(EiraTheme.title).foregroundStyle(EiraTheme.sage)
+                }
                 ForEach(flow.entries) { entry in
                     VStack(alignment: .leading, spacing: 10) {
                         Text(entry.createdAt, format: .dateTime.day().month().year().hour().minute())
@@ -17,7 +22,7 @@ struct WriteScreen: View {
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
                             .frame(maxWidth: .infinity, alignment: .trailing)
                             .contextMenu { Button("Hapus catatan", role: .destructive) { Task { await flow.deleteEntry(entry.id) } } }
-                        AllowedUsesControl(entry: entry, flow: flow)
+                        AllowedUsesControl(entry: entry) { uses in await flow.setUses(uses, for: entry.id) }
                         if let reply = entry.writeReply { Text(reply) }
                     }
                 }
@@ -50,27 +55,86 @@ struct WriteScreen: View {
                 if let message = voice.errorMessage { Text(message).font(.callout).foregroundStyle(.secondary) }
             }.padding()
         }
-        .safeAreaInset(edge: .bottom) {
-            HStack(alignment: .bottom) {
-                Button {
-                    if voice.isRecording { voice.finish(into: flow) } else { voice.start() }
-                } label: { Image(systemName: voice.isRecording ? "stop.circle.fill" : "mic") }
-                    .accessibilityLabel(voice.isRecording ? "Selesai merekam" : "Rekam suara")
-                    .disabled(voice.isWorking || flow.isWorking)
-                TextField("Tulis catatanmu", text: $flow.text, axis: .vertical)
-                    .lineLimit(1...6).textFieldStyle(.roundedBorder).autocorrectionDisabled()
-                    .disabled(flow.isWorking || voice.isWorking || voice.isRecording)
-                    .accessibilityIdentifier("write.input")
-                Button("Kirim") { flow.submit() }
-                    .disabled(flow.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                              || flow.isWorking || voice.isRecording || voice.isWorking)
-                    .accessibilityIdentifier("write.send")
-            }.padding().background(.bar)
-        }
-        .navigationTitle("Tulis")
-        .toolbar { Button(SafetyStrings.privacyTitle, systemImage: "info.circle") { showsPrivacy = true } }
+        .background(EiraTheme.paper)
+        .font(EiraTheme.body)
+        .foregroundStyle(EiraTheme.ink)
+        .tint(EiraTheme.sage)
+        .safeAreaInset(edge: .bottom, spacing: 0) { actionBar }
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsPrivacy) { PrivacyCopyScreen() }
         .task { await flow.load() }
+    }
+
+    private var composer: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(draftStartedAt, format: .dateTime.day().month(.wide).hour().minute())
+                    .font(EiraTheme.micro)
+                Text("Catatan baru").font(EiraTheme.title)
+            }
+            .foregroundStyle(EiraTheme.sage)
+            .padding(.horizontal, 4)
+
+            ZStack(alignment: .topLeading) {
+                if flow.text.isEmpty {
+                    Text("Ceritakan apa yang ingin kamu catat…")
+                        .padding(.horizontal, 5).padding(.top, 8)
+                        .allowsHitTesting(false)
+                }
+                TextEditor(text: $flow.text)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 260)
+                    .focused($isWriting)
+                    .disabled(flow.isWorking || voice.isWorking || voice.isRecording)
+                    .accessibilityLabel("Tulis catatanmu")
+                    .accessibilityIdentifier("write.input")
+            }
+            .font(EiraTheme.story)
+            .foregroundStyle(EiraTheme.sage)
+            .padding(16)
+            .background(EiraTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+            .overlay { RoundedRectangle(cornerRadius: 12).stroke(EiraTheme.sageTint) }
+
+            Button(SafetyStrings.privacyTitle) { showsPrivacy = true }
+                .foregroundStyle(EiraTheme.sage)
+                .font(EiraTheme.body)
+                .frame(minHeight: 44, alignment: .leading)
+        }
+    }
+
+    private var actionBar: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(EiraTheme.sageTint).frame(height: 1)
+            if voice.isWorking {
+                ProgressView("Mengubah suara menjadi teks…").padding(.top, 12)
+            }
+            HStack(spacing: 12) {
+                Button {
+                    isWriting = false
+                    if voice.isRecording { voice.finish(into: flow) } else { voice.start() }
+                } label: {
+                    Text(voice.isRecording ? "Selesai merekam" : "Rekam cerita")
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .disabled(voice.isWorking || flow.isWorking)
+
+                Button {
+                    isWriting = false
+                    flow.submit()
+                    draftStartedAt = Date()
+                } label: {
+                    Text("Simpan").frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .disabled(flow.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                          || flow.isWorking || voice.isRecording || voice.isWorking)
+                .accessibilityIdentifier("write.send")
+            }
+            .font(EiraTheme.action)
+            .buttonStyle(DiaryActionStyle())
+            .padding(.horizontal, 20).padding(.vertical, 16)
+        }
+        .background(EiraTheme.paper)
     }
 
     private func label(_ type: ViolenceType) -> String {
@@ -87,4 +151,16 @@ struct WriteScreen: View {
 #Preview {
     let dependencies = AppDependencies()
     NavigationStack { WriteScreen(flow: WriteFlow(dependencies: dependencies), voice: VoiceFlow(client: dependencies.serverClient)) }
+}
+
+private struct DiaryActionStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(EiraTheme.sage)
+            .background(configuration.isPressed ? EiraTheme.sageTint : EiraTheme.surface, in: Capsule())
+            .overlay { Capsule().stroke(EiraTheme.sageTint) }
+            .opacity(isEnabled ? 1 : 0.45)
+    }
 }

@@ -39,7 +39,8 @@ final class AskFlow {
         let allowedIDs = Set(entries.filter { $0.allowedUses.legalGuidance }.map(\.id))
         // A previous answer may contain a story whose permission has since changed.
         replies = replies.filter { replySources[$0.key, default: []].isSubset(of: allowedIDs) }
-        turns = entries.filter { $0.kind == .question && $0.allowedUses.legalGuidance }
+        // Keep restricted questions visible so she can restore their permissions.
+        turns = entries.filter { $0.kind == .question }
             .sorted { $0.createdAt < $1.createdAt }
             .map { Turn(entry: $0, response: replies[$0.id]) }
     }
@@ -47,6 +48,17 @@ final class AskFlow {
     func load() async {
         do { show(try await store.entries()) }
         catch { if active { errorMessage = "Pertanyaanmu belum bisa dibuka. Coba lagi." } }
+    }
+
+    func setUses(_ uses: AllowedUses, for id: UUID) async {
+        guard active else { return }
+        do {
+            guard var entry = try await store.entries().first(where: { $0.id == id && $0.kind == .question }),
+                  active else { return }
+            entry.allowedUses = uses
+            try await store.saveEntry(entry)
+            await load()
+        } catch { if active { errorMessage = "Pilihanmu belum tersimpan. Coba lagi." } }
     }
 
     func send(_ text: String) async -> Bool {
@@ -78,7 +90,7 @@ final class AskFlow {
             let entries = try await store.entries()
             show(entries)
             guard entries.contains(where: { $0.id == question.id && $0.allowedUses.legalGuidance }) else { return true }
-            let earlier = turns.prefix { $0.id != question.id }
+            let earlier = turns.prefix { $0.id != question.id }.filter { $0.entry.allowedUses.legalGuidance }
             let conversation = earlier.flatMap { turn -> [AskMessage] in
                 var messages = [AskMessage(role: .user, text: turn.entry.text)]
                 if let response = turn.response { messages.append(AskMessage(role: .assistant, text: response.answer)) }

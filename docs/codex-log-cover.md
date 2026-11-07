@@ -67,3 +67,11 @@ Simulator UI automation could not select Simulator by name or bundle ID, so no v
 - `EiraStore` record-access contract is unchanged. `PrivateSessionStore` enforces one-unlock access behind that contract.
 - `ServerClient` adds `cancelPendingRequests()` with a no-op default for canned/test clients; HTTP cancels outstanding requests on lock.
 - Shared bootstrap/config changes: `AppDependencies` gains optional session-cleanup lifetime; the app mounts the private stages behind access; Info.plist gains microphone text and server settings; the existing xcconfig optionally includes ignored local settings. `EIRA_RELEASE_REPORT_TARGET` is unchanged. Ask/Report screens and server files are unchanged.
+
+## Notes cover design — 7 Nov 2026
+
+Owner approved replacing the task cover with the supplied Notes design, keeping exact `eira` access, and building the PIN screen for later backend integration (PRODUCT C15). Implemented searchable note cards, pinning, text/checklist editor, and amber cover styling. Existing task JSON still decodes; legacy tasks become editable single-item checklists without rewriting data at launch. New cover fields are optional and stay in the separate cover file. No private content is used for note previews. Saving exact `eira` calls the existing access flow and does not store that title.
+
+`CoverPINScreen` is standalone with `onCancel` and `onSubmit(String)` callbacks; it has no current route from the cover, no PIN persistence, and no verification. C13 access and encryption are unchanged. Attachments and photos remain excluded.
+
+Validation: Debug simulator build passed. Both CoverDesignTests passed: legacy decoding, note/checklist/pinning persistence, cover deletion without unlocking private storage, and render captures for home, editor and PIN. Reviewed captures and adjusted checklist spacing and amber back control. The wider suite's previously observed Keychain/migration failures were not re-investigated in this visual change.

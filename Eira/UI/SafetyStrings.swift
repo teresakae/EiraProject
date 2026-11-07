@@ -5,7 +5,7 @@ enum SafetyStrings {
     static let lawyerCaveat = "Bagian jawaban ini belum ditinjau oleh pengacara. Ini informasi umum, bukan nasihat hukum."
     static let privacyTitle = "Tentang catatanmu"
     static let privacy = """
-    Catatan disimpan terenkripsi di ponsel dan dibuka dengan frasa sandimu. Tidak ada pemulihan jika kamu lupa.
+    Catatan disimpan terenkripsi di ponsel, dengan kunci yang disimpan oleh ponsel ini. Catatan dibuka dengan PIN tetap. Siapa pun yang bisa memakai ponselmu yang terbuka, tahu kata eira dan PIN-nya bisa membuka catatanmu.
 
     Untuk menyusun linimasa, setiap catatan baru dikirim ke AI, apa pun izin penggunaannya. Untuk menjawab pertanyaan atau mengisi draf, teks yang diizinkan dibuka di ponsel lalu dikirim lewat server kami ke OpenAI. Server kami tidak menyimpan salinannya. OpenAI dapat menyimpan teks dan jawaban dalam log pemantauan penyalahgunaan hingga 30 hari.
 

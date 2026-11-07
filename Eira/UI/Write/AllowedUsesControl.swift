@@ -2,8 +2,9 @@ import SwiftUI
 
 struct AllowedUsesControl: View {
     let entry: Entry
-    let flow: WriteFlow
+    let onChange: (AllowedUses) async -> Void
     @State private var showsSheet = false
+    @State private var isSaving = false
 
     var body: some View {
         Button {
@@ -14,12 +15,16 @@ struct AllowedUsesControl: View {
         .sheet(isPresented: $showsSheet) {
             NavigationStack {
                 Form {
-                    Toggle("Linimasa pribadi", isOn: binding(\.personalTimeline))
+                    if entry.kind == .story {
+                        Toggle("Linimasa pribadi", isOn: binding(\.personalTimeline))
+                    }
                     Toggle("Panduan hukum", isOn: binding(\.legalGuidance))
                     Toggle("Laporan", isOn: binding(\.report))
-                    Text("Mengubah pilihan ini tidak menghapus catatanmu. Catatan baru tetap dikirim untuk menyusun linimasa.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
+                    if entry.kind == .story {
+                        Text("Mengubah pilihan ini tidak menghapus catatanmu. Catatan baru tetap dikirim untuk menyusun linimasa.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }.disabled(isSaving)
                 .navigationTitle("Penggunaan catatan")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { Button("Selesai") { showsSheet = false } }
@@ -27,9 +32,10 @@ struct AllowedUsesControl: View {
         }
     }
 
-    private var current: AllowedUses { flow.entries.first(where: { $0.id == entry.id })?.allowedUses ?? entry.allowedUses }
+    private var current: AllowedUses { entry.allowedUses }
     private var summary: String {
-        let uses = [(current.personalTimeline, "linimasa"), (current.legalGuidance, "panduan hukum"), (current.report, "laporan")]
+        let uses = [(entry.kind == .story && current.personalTimeline, "linimasa"),
+                    (current.legalGuidance, "panduan hukum"), (current.report, "laporan")]
             .filter(\.0).map(\.1)
         return uses.isEmpty ? "Tidak digunakan di tahap lain · Ubah" : "Digunakan untuk \(uses.joined(separator: ", ")) · Ubah"
     }
@@ -38,7 +44,11 @@ struct AllowedUsesControl: View {
         Binding(get: { current[keyPath: path] }, set: { value in
             var uses = current
             uses[keyPath: path] = value
-            Task { await flow.setUses(uses, for: entry.id) }
+            isSaving = true
+            Task {
+                await onChange(uses)
+                isSaving = false
+            }
         })
     }
 }

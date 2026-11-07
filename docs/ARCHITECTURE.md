@@ -10,7 +10,7 @@ Three parts: the iOS app, a thin server, and the OpenAI API. The diagram below i
 |---|---|
 | Stack | SwiftUI. No third-party iOS libraries. Built in layers (see section 2). |
 | Storage | Two stores on the phone. **Secret store:** her entries, events and report draft, encrypted with CryptoKit AES-GCM. **Cover store:** ordinary to-do tasks, including the unrelated tasks generated for diary entries (DECIDED, C11). It is separate from private encryption, because the cover must show its contents before the actual app is opened. It holds nothing sensitive and no link back to any entry. |
-| Key | DECIDED C12: a user-created private passphrase protects access to the encryption key. No saved credential, automatic unlock or recovery. Task-trigger handling and key handling stay separate. The trigger and server API key are never encryption keys. Implementation: random 256-bit storage key wrapped with PBKDF2-HMAC-SHA256 (600,000 rounds, random 32-byte salt), CryptoKit AES-GCM for both wrapping and records. The versioned envelope holds salt, wrapped key and ciphertext; none permits automatic unlock. |
+| Key | DECIDED C13: random 256-bit AES-GCM storage key held in Keychain with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` and synchronizing disabled. C16 requires saving a note titled exactly `eira` and entering the fixed PIN `1111` before loading it. The PIN is an access gate, never an encryption key; lock drops the in-memory key and decrypted records. The Keychain account uses the stable store-directory name, not the changeable app-container path. The version-2 envelope holds ciphertext, with no wrapped key or passphrase salt. Existing version-1 envelopes require one correct passphrase to convert atomically; a wrong phrase or missing device key never replaces records. The trigger and server API key are never encryption keys. |
 | File protection | iOS Data Protection on both stores. |
 | Backups | Secret store excluded from iCloud and device backup. The research notes list compromised iCloud accounts as a threat. |
 | Notifications | None. Do not request the permission. |
@@ -149,7 +149,8 @@ Check these on iOS, on a real iPhone where possible:
 |---|---|---|
 | iOS system frameworks | SwiftUI | UI |
 | iOS system frameworks | CryptoKit | Encryption |
-| iOS system frameworks | CommonCrypto | PBKDF2-HMAC-SHA256 for the C12 passphrase-derived wrapping key |
+| iOS system frameworks | CommonCrypto | One-time conversion of existing passphrase-protected records |
+| iOS system frameworks | Security | This-device-only Keychain storage of the random encryption key |
 | iOS system frameworks | AVFoundation | Voice recording |
 | iOS system frameworks | WebKit | SAPA form web view |
 | Server library | `openai` npm package on Node | Calls to OpenAI |

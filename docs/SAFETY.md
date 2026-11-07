@@ -12,7 +12,7 @@ It lowers the chance of casual discovery. It does not stop a determined search, 
 
 ## The "he opens it" test
 
-The cover must survive inspection. Someone who opens the app must see a working to-do list, not a static fake screen. Nothing on any cover screen mentions help, abuse, reporting, or the real app. C11 in `PRODUCT.md` records the cover and access decision: adding a new task named exactly `eira` opens the actual app; any other title adds an ordinary task. The fixed trigger is discoverable and is not an encryption secret. C12 requires her own private passphrase: setup on first access, typed unlock thereafter, no automatic unlock or recovery. Deletion makes the next access start fresh setup.
+The cover must survive inspection. Someone who opens the app must see a working to-do list, not a static fake screen. Nothing on any cover screen mentions help, abuse, reporting, or the real app. C11 in `PRODUCT.md` records the cover and access decision: adding a new task named exactly `eira` opens the actual app; any other title adds an ordinary task. The fixed trigger is discoverable and is not an encryption secret. C16 replaces direct access: saving a note titled exactly `eira` opens the PIN screen, and the fixed PIN `1111` opens the private area. A random encryption key is held by this phone. Anyone using the unlocked phone who knows `eira` and the fixed PIN can open the records. Existing passphrase-protected records require one unlock to convert without erasing them. Deletion removes private records and the device-held key; later access opens an empty private area.
 
 ## Rules
 
@@ -27,7 +27,7 @@ The cover must survive inspection. Someone who opens the app must see a working 
 
 The app must say, in plain words, where she can read it before she writes anything real:
 
-1. What she writes is encrypted on her phone.
+1. What she writes is encrypted on her phone with a device-held key. Access requires a fixed PIN; anyone using the unlocked phone who knows `eira` and the PIN can open her notes.
 2. To answer her or fill the draft, her text is decrypted on the phone and sent through our server to OpenAI.
 3. OpenAI can keep prompts and answers in abuse-monitoring logs for up to 30 days. Our server keeps no copy.
 4. Voice is turned into text and the audio is thrown away.

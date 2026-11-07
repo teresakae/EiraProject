@@ -26,13 +26,16 @@ struct AskScreen: View {
                                 .padding(12)
                                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
                                 .frame(maxWidth: .infinity, alignment: .trailing)
+                            AllowedUsesControl(entry: turn.entry) { uses in
+                                await flow.setUses(uses, for: turn.id)
+                            }
                             if let response = turn.response {
                                 Text(response.answer)
                                 if AskFlow.needsLawyerCaveat(response) {
                                     Text(SafetyStrings.lawyerCaveat).font(.callout).foregroundStyle(.secondary)
                                         .accessibilityIdentifier("ask.lawyerCaveat")
                                 }
-                            } else if !flow.isWorking {
+                            } else if !flow.isWorking && turn.entry.allowedUses.legalGuidance {
                                 Button("Muat jawaban") { Task { await flow.retry(turn.entry) } }
                             }
                         }.id(turn.id)

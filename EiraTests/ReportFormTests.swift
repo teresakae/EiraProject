@@ -155,6 +155,12 @@ final class ReportFormTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(500))
         snapshot(controller.view, name: "Ask reply with lawyer caveat")
         XCTAssertTrue(AskFlow.needsLawyerCaveat(try XCTUnwrap(flow.turns.last?.response)))
+        let entry = try XCTUnwrap(flow.turns.first?.entry)
+        await flow.setUses(.init(personalTimeline: true, legalGuidance: false, report: false), for: entry.id)
+        try await Task.sleep(for: .milliseconds(500))
+        XCTAssertEqual(flow.turns.count, 1)
+        XCTAssertNil(flow.turns.first?.response)
+        snapshot(controller.view, name: "Ask question with restricted uses")
     }
 
     func testSourceAndManualEditAtLargeTextSize() async throws {

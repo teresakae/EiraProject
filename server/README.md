@@ -33,7 +33,7 @@ model requests for Responses and audio transcription. Check project access to:
 
 - `gpt-6-luna`: extract and Ask, reasoning `none`.
 - `gpt-6.1-terra`: report drafting and fallback, reasoning `none`.
-- `gpt-transcribe`: voice, with SDK `languages: ["id"]`.
+- `gpt-transcribe`: voice, with SDK `languages: ["id", "en"]` (Indonesian and English).
 
 Set spending limits and alerts in the platform. Model availability is project
 specific. Ask the organisers about Modified Abuse Monitoring; `store: false`
@@ -200,7 +200,7 @@ Multipart fields:
 | Field | Type | Requirement |
 |---|---|---|
 | `file` | One audio file, with filename and content type | Required |
-| `language` | `id` | Optional; server always supplies Indonesian hint |
+| `language` | `id` | Optional compatibility field for existing app builds; server always supplies both Indonesian and English hints |
 
 Supported filename extensions: `mp3`, `mp4`, `mpeg`, `mpga`, `m4a`, `wav`, `webm`.
 Maximum **4,000,000 bytes** of audio; maximum 4,100,000-byte multipart request.

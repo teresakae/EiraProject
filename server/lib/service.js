@@ -109,7 +109,7 @@ export function createService({ client, faqLoader = loadFAQ, modelConfig = model
       // Memory only, with a neutral filename. No upload to the Files API or disk.
       const audio = new File([file], `audio.${extension}`, { type: file.type });
       const response = await getClient().audio.transcriptions.create({
-        file: audio, model: modelConfig.transcribe, languages: ['id'], response_format: 'json',
+        file: audio, model: modelConfig.transcribe, languages: ['id', 'en'], response_format: 'json',
       });
       if (typeof response.text !== 'string' || !response.text.trim()) {
         throw new AppError(502, 'transcription_unavailable', 'Rekamannya belum bisa aku ubah jadi teks.');

@@ -3,7 +3,7 @@ import Observation
 
 @MainActor @Observable
 final class AccessFlow {
-    enum Gate { case setup, unlock }
+    enum Gate { case pin, migration }
     let store: EncryptedEiraStore
     private let client: any ServerClient
     private var attempt = UUID()
@@ -20,20 +20,44 @@ final class AccessFlow {
     // Called with the unmodified title; case and whitespace are significant.
     func addTask(_ title: String) async throws {
         if title == "eira" {
-            gate = store.needsSetup ? .setup : .unlock
+            guard !isInactive, !Task.isCancelled else { return }
+            guard workspace == nil else { return }
+            gate = .pin
+            errorMessage = nil
         } else if !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             try store.saveCoverTask(CoverTask(title: title))
         }
     }
 
+    func submitPIN(_ pin: String) -> Bool {
+        guard gate == .pin, !isInactive else { return false }
+        guard pin == "1111" else {
+            errorMessage = "PIN salah. Coba lagi."
+            return false
+        }
+        do {
+            try store.open()
+            workspace = PrivateWorkspace(dependencies: .init(store: PrivateSessionStore(store), serverClient: client))
+            gate = nil
+            errorMessage = nil
+            return true
+        } catch StoreError.migrationRequired {
+            gate = .migration
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = "Catatan belum bisa dibuka. Coba lagi."
+            return false
+        }
+    }
+
     func open(passphrase: String) async -> Bool {
-        guard let gate else { return false }
+        guard gate == .migration, !isInactive else { return false }
         let token = UUID()
         attempt = token
         errorMessage = nil
         do {
-            if gate == .setup { try await store.setup(passphrase: passphrase) }
-            else { try await store.unlock(passphrase: passphrase) }
+            try await store.migrate(passphrase: passphrase)
             guard token == attempt, !Task.isCancelled else { store.lock(); return false }
             workspace = PrivateWorkspace(dependencies: .init(store: PrivateSessionStore(store), serverClient: client))
             self.gate = nil
@@ -66,8 +90,8 @@ final class AccessFlow {
         catch {
             workspace?.stop()
             workspace = nil
-            gate = .unlock
-            errorMessage = "Data belum terhapus. Buka kembali dan coba hapus lagi."
+            gate = nil
+            errorMessage = "Perubahan belum selesai. Coba lagi."
         }
     }
 }

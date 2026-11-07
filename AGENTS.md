@@ -7,9 +7,9 @@ You are building Eira, a native iOS app, at a one-day hackathon on Sat 7 Nov 202
 - Never commit, push, merge, create a branch, or change git history. The owner handles git operations.
 - For new files, dependencies, changes across three or more files, or work requiring close review: explain the plan in plain language and wait for approval. A precisely described small change may proceed. The owner approved this shared-base plan on 7 Nov 2026.
 - Lead with visible behaviour and plain language. No generic AI copy or marketing language.
-- Current phase: Person B implementation approved on 7 Nov 2026, directly on main at the owner’s request. Cover, passphrase access, encrypted storage, Write and voice are in scope. The owner also requested the local server connection for all four endpoints.
+- Current phase: Person B implementation approved on 7 Nov 2026, directly on main at the owner’s request. Cover, direct access, encrypted storage, Write and voice are in scope. The owner also requested the local server connection for all four endpoints.
 - C11 supersedes the original disguise: a to-do cover, opened by adding a task named exactly `eira`, with unrelated generated cover tasks. No plant-name setup. The base does not implement that access flow.
-- C12 is approved: first access creates her private passphrase; later access requires it. No saved/default credential, automatic unlock or recovery. The fixed trigger and server API key are never storage encryption keys.
+- C13 supersedes C12: adding exactly `eira` opens the private area directly, with no passphrase setup or unlock. Keep records encrypted with a random device-held Keychain key, available only while the phone is unlocked, non-syncing and restricted to this device. Existing passphrase-protected records get a one-time unlock for conversion without deletion. Backgrounding drops private memory and returns to the cover. Delete everything removes private records and their device-held key, preserving cover tasks. The trigger and server API key are never encryption keys.
 
 ## Rule zero
 
@@ -58,7 +58,7 @@ Rule for PROVISIONAL choices: Keep each PROVISIONAL choice in its own file or se
 
 ## Build and test commands
 
-Run from the repository root with Xcode 27.2 selected. Minimum deployment target: iOS 17.0. No third-party packages are needed. `Eira/` and `EiraTests/` are Xcode folder-synced groups: add source files on disk without editing `project.pbxproj`. `docs/`, `server/` and configuration files are outside the app resource group.
+Run from the repository root with Xcode 27.2 selected. Simulator tests use ad-hoc signing (`CODE_SIGN_IDENTITY=-`); do not disable signing, because the encrypted store uses Keychain. Minimum deployment target: iOS 17.0. No third-party packages are needed. `Eira/` and `EiraTests/` are Xcode folder-synced groups: add source files on disk without editing `project.pbxproj`. `docs/`, `server/` and configuration files are outside the app resource group.
 
 Choose an available simulator (each parallel agent uses its own device):
 
@@ -72,7 +72,7 @@ Build Debug:
 ```sh
 xcodebuild -project Eira.xcodeproj -scheme Eira -configuration Debug \
   -destination "platform=iOS Simulator,id=$EIRA_SIMULATOR_ID" \
-  -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath .build/DerivedData CODE_SIGN_IDENTITY=- build
 ```
 
 Run on the simulator. Skip `boot` if that device is already booted:
@@ -90,7 +90,7 @@ Run tests (boot the simulator first):
 xcodebuild -project Eira.xcodeproj -scheme Eira -configuration Debug \
   -destination "platform=iOS Simulator,id=$EIRA_SIMULATOR_ID" \
   -derivedDataPath .build/DerivedData -parallel-testing-enabled NO \
-  CODE_SIGNING_ALLOWED=NO test
+  CODE_SIGN_IDENTITY=- test
 ```
 
 Verify Release configuration on the simulator without reaching a real service:
@@ -99,7 +99,7 @@ Verify Release configuration on the simulator without reaching a real service:
 xcodebuild -project Eira.xcodeproj -scheme Eira -configuration Release \
   -destination "platform=iOS Simulator,id=$EIRA_SIMULATOR_ID" \
   -derivedDataPath .build/DerivedData -parallel-testing-enabled NO \
-  CODE_SIGNING_ALLOWED=NO test
+  CODE_SIGN_IDENTITY=- test
 ```
 
 Report delivery is controlled by `Configuration/ReportTarget.xcconfig`: Release defaults to `real`. `Configuration/Info.plist` expands the selected value into the app metadata read by `ReportTarget.current`. Debug uses `mock` and `ReportTarget.current` enforces mock even if a build-setting override says real. The later demo branch changes only `EIRA_RELEASE_REPORT_TARGET` to `mock`. No web view, endpoint URL or submission code exists in this base.
@@ -118,7 +118,7 @@ Server commands: none yet. `server/` is intentionally empty; the server agent su
 
 ## Shared base contracts and ownership
 
-The contracts below describe the base checkpoint. Current Person B implementation and verification are recorded in `docs/codex-log-cover.md`; C12 and the owner’s local-server request supersede the stand-in-only status.
+The contracts below describe the base checkpoint. Current Person B implementation and verification are recorded in `docs/codex-log-cover.md`; C13 and the owner’s local-server request supersede the stand-in-only status.
 
 - `Eira/CoreRules/Models.swift`: `Entry`, `AllowedUses`, `EntryKind`, `Event`, `ReportDraft`, `ReportDraftField`, `ReportValue` and `CoverTask`. Only Person B changes shared models after this base.
 - `Entry` keeps exact text and phone time immutable. `kind` distinguishes stories from her Ask questions. Events reference their entry and inherit its allowed uses; they do not copy the flags.

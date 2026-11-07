@@ -2,70 +2,133 @@ import SwiftUI
 
 struct CoverScreen: View {
     let access: AccessFlow
-    @State private var tasks: [CoverTask] = []
-    @State private var title = ""
+    @State private var notes: [CoverTask] = []
+    @State private var search = ""
+    @State private var editing: CoverTask?
     @State private var errorMessage: String?
+
+    private var filtered: [CoverTask] {
+        notes.filter { search.isEmpty || ($0.title + " " + ($0.body ?? "") + " " + ($0.checklist ?? []).map(\.text).joined(separator: " ")).localizedCaseInsensitiveContains(search) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    HStack {
-                        TextField("Tambah tugas", text: $title)
-                            .autocorrectionDisabled().textInputAutocapitalization(.sentences)
-                            .onSubmit { add() }.accessibilityIdentifier("cover.title")
-                        Button("Tambah", systemImage: "plus") { add() }
-                            .labelStyle(.iconOnly).disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .accessibilityIdentifier("cover.add")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Catatan").font(.custom("PlusJakartaSans-Regular", size: 32, relativeTo: .largeTitle).bold())
+                        Text("\(notes.count) catatan").font(.caption).foregroundStyle(CoverStyle.secondary)
                     }
-                }
-                Section {
-                    ForEach(tasks) { task in
-                        HStack(spacing: 12) {
-                            Button {
-                                Task {
-                                    var updated = task
-                                    updated.isCompleted.toggle()
-                                    do { try access.store.saveCoverTask(updated); await load() }
-                                    catch { errorMessage = "Perubahan belum tersimpan. Coba lagi." }
-                                }
-                            } label: {
-                                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                                    .font(.title3)
-                            }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel(task.isCompleted ? "Tandai belum selesai" : "Tandai selesai")
-                            Text(task.title).strikethrough(task.isCompleted)
-                                .foregroundStyle(task.isCompleted ? .secondary : .primary)
-                        }.padding(.vertical, 4)
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(CoverStyle.secondary)
+                        TextField("Cari catatan…", text: $search)
+                            .accessibilityIdentifier("cover.search")
                     }
-                    .onDelete { offsets in
-                        let ids = offsets.map { tasks[$0].id }
-                        Task {
-                            do { for id in ids { try access.store.deleteCoverTask(id: id) }; await load() }
-                            catch { errorMessage = "Tugas belum bisa dihapus. Coba lagi." }
-                        }
+                    .padding(14).background(.white, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay { RoundedRectangle(cornerRadius: 12).stroke(CoverStyle.border) }
+                    noteSection("Disematkan", pinned: true)
+                    noteSection("Terbaru", pinned: false)
+                    if notes.isEmpty {
+                        Text("Belum ada catatan").foregroundStyle(CoverStyle.secondary).padding(.vertical, 24)
+                    } else if filtered.isEmpty {
+                        Text("Catatan tidak ditemukan").foregroundStyle(CoverStyle.secondary)
                     }
-                    if tasks.isEmpty { Text("Belum ada tugas").foregroundStyle(.secondary) }
-                }
-                if let errorMessage { Text(errorMessage).font(.callout).foregroundStyle(.secondary) }
+                    if let message = errorMessage ?? (access.gate == nil && !access.isInactive ? access.errorMessage : nil) {
+                        Text(message).foregroundStyle(CoverStyle.secondary)
+                    }
+                }.padding(20)
             }
-            .navigationTitle("Eira")
+            .background(CoverStyle.background)
+            .font(CoverStyle.body)
+            .foregroundStyle(EiraTheme.ink)
+            .tint(CoverStyle.amber)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                HStack {
+                    Text("\(notes.count) catatan").font(.caption).foregroundStyle(CoverStyle.secondary)
+                    Spacer()
+                    Button { editing = CoverTask(title: "") } label: {
+                        Image(systemName: "square.and.pencil").font(.title3)
+                            .frame(width: 52, height: 52)
+                            .foregroundStyle(.white)
+                            .background(CoverStyle.amber, in: RoundedRectangle(cornerRadius: 18))
+                    }
+                    .accessibilityLabel("Catatan baru").accessibilityIdentifier("cover.add")
+                }.padding(.horizontal, 20).padding(.vertical, 10).background(.white)
+                    .overlay(alignment: .top) { Rectangle().fill(CoverStyle.border).frame(height: 1) }
+            }
+            .sheet(item: $editing, onDismiss: { Task { await load() } }) { note in
+                CoverNoteEditor(note: note) { updated in
+                    if updated.title == "eira" {
+                        try await access.addTask(updated.title)
+                    } else {
+                        try access.store.saveCoverTask(updated)
+                    }
+                }
+            }
             .task { await load() }
+        }
+        .preferredColorScheme(.light)
+    }
+
+    @ViewBuilder private func noteSection(_ heading: String, pinned: Bool) -> some View {
+        let group = filtered.filter { ($0.isPinned ?? false) == pinned }
+        if !group.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(heading).font(.headline)
+                ForEach(group) { note in
+                    Button { editing = note } label: { noteCard(note, pinned: pinned) }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(pinned ? "Lepas sematan" : "Sematkan", systemImage: "pin") { pin(note) }
+                            Button("Hapus catatan", systemImage: "trash", role: .destructive) { delete(note) }
+                        }
+                }
+            }
         }
     }
 
-    private func add() {
-        let value = title
-        Task {
-            do { try await access.addTask(value); title = ""; await load() }
-            catch { errorMessage = "Tugas belum tersimpan. Coba lagi." }
+    private func noteCard(_ note: CoverTask, pinned: Bool) -> some View {
+        HStack(spacing: 12) {
+            if !pinned {
+                Image(systemName: "note.text").foregroundStyle(CoverStyle.secondary)
+                    .frame(width: 38, height: 38)
+                    .background(EiraTheme.sageTint.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+            }
+            VStack(alignment: .leading, spacing: 5) {
+                if pinned { Label("DISEMATKAN", systemImage: "pin").font(.system(size: 9)).foregroundStyle(CoverStyle.secondary) }
+                Text(note.title).fontWeight(.semibold).lineLimit(1)
+                let summary = (note.checklist ?? []).map(\.text).joined(separator: " · ")
+                if let body = note.body, !body.isEmpty {
+                    Text(body).font(.caption).foregroundStyle(CoverStyle.secondary).lineLimit(1)
+                } else if !summary.isEmpty {
+                    Text(summary).font(.caption).foregroundStyle(CoverStyle.secondary).lineLimit(1)
+                }
+                Text(note.createdAt, format: .dateTime.day().month(.abbreviated))
+                    .font(.system(size: 10)).foregroundStyle(CoverStyle.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            if !pinned { Image(systemName: "chevron.right").font(.caption).foregroundStyle(CoverStyle.secondary) }
         }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(pinned ? CoverStyle.pinned : .white, in: RoundedRectangle(cornerRadius: 14))
+        .overlay { RoundedRectangle(cornerRadius: 14).stroke(pinned ? CoverStyle.amber.opacity(0.3) : CoverStyle.border) }
+    }
+
+    private func pin(_ note: CoverTask) {
+        var updated = note
+        updated.isPinned = !(note.isPinned ?? false)
+        do { try access.store.saveCoverTask(updated); Task { await load() } }
+        catch { errorMessage = "Perubahan belum tersimpan. Coba lagi." }
+    }
+
+    private func delete(_ note: CoverTask) {
+        do { try access.store.deleteCoverTask(id: note.id); Task { await load() } }
+        catch { errorMessage = "Catatan belum bisa dihapus. Coba lagi." }
     }
 
     private func load() async {
-        do { tasks = try access.store.coverTasks(); errorMessage = nil }
-        catch { errorMessage = "Daftar tugas belum bisa dibuka. Coba lagi." }
+        do { notes = try access.store.coverTasks(); errorMessage = nil }
+        catch { errorMessage = "Daftar catatan belum bisa dibuka. Coba lagi." }
     }
 }
 

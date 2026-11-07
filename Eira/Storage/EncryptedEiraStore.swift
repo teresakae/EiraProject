@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-enum StoreError: Error { case locked, alreadyCreated, missing, invalidPassphrase, encryption, format }
+enum StoreError: Error { case locked, alreadyCreated, missing, invalidPassphrase, migrationRequired, encryption, keychain(Int32), format }
 
 @MainActor
 final class EncryptedEiraStore: EiraStore {
@@ -17,6 +17,8 @@ final class EncryptedEiraStore: EiraStore {
     private var records: Records?
     private var key: SymmetricKey?
     private var envelope: PrivateEncryption.Envelope?
+    // The directory name stays stable when iOS moves the app's container after an update.
+    private var keyAccount: String { directory.lastPathComponent }
     private(set) var sessionID = UUID()
     var isUnlocked: Bool { key != nil && records != nil }
     var needsSetup: Bool { !FileManager.default.fileExists(atPath: secretURL.path) }
@@ -37,6 +39,46 @@ final class EncryptedEiraStore: EiraStore {
     private func write(_ data: Data, to url: URL) throws {
         try prepareDirectory()
         try data.write(to: url, options: [.atomic, .completeFileProtection])
+    }
+
+    func open() throws {
+        lock()
+        if needsSetup {
+            try saveWithDeviceKey(Records(), key: SymmetricKey(size: .bits256))
+            return
+        }
+        let envelope = try JSONDecoder().decode(PrivateEncryption.Envelope.self, from: Data(contentsOf: secretURL))
+        if envelope.version == 1 { throw StoreError.migrationRequired }
+        guard envelope.version == 2, envelope.salt.isEmpty, envelope.rounds == 0,
+              envelope.wrappedKey.isEmpty else { throw StoreError.format }
+        let key = try DeviceKeyStore.load(account: keyAccount)
+        let records = try JSONDecoder().decode(Records.self,
+            from: PrivateEncryption.open(envelope.ciphertext, key: key))
+        self.key = key
+        self.records = records
+        self.envelope = envelope
+        sessionID = UUID()
+    }
+
+    func migrate(passphrase: String) async throws {
+        do {
+            try await unlock(passphrase: passphrase)
+            try Task.checkCancellation()
+            guard let records, let key else { throw StoreError.locked }
+            try saveWithDeviceKey(records, key: key)
+        } catch { lock(); throw error }
+    }
+
+    private func saveWithDeviceKey(_ records: Records, key: SymmetricKey) throws {
+        let envelope = PrivateEncryption.Envelope(version: 2, salt: Data(), rounds: 0,
+            wrappedKey: Data(), ciphertext: try PrivateEncryption.seal(JSONEncoder().encode(records), key: key))
+        try DeviceKeyStore.save(key, account: keyAccount)
+        do { try write(JSONEncoder().encode(envelope), to: secretURL) }
+        catch { try? DeviceKeyStore.delete(account: keyAccount); throw error }
+        self.records = records
+        self.key = key
+        self.envelope = envelope
+        sessionID = UUID()
     }
 
     func setup(passphrase: String) async throws {
@@ -172,6 +214,7 @@ final class EncryptedEiraStore: EiraStore {
 
     func deleteSecretData() throws {
         lock()
+        try DeviceKeyStore.delete(account: keyAccount)
         if !needsSetup { try FileManager.default.removeItem(at: secretURL) }
     }
 }

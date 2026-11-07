@@ -61,8 +61,9 @@ final class AskReportTests: XCTestCase {
         XCTAssertEqual(requests[0].entries.map(\.text), [allowed.text])
         XCTAssertTrue(requests[0].entries.allSatisfy { $0.events.isEmpty })
         XCTAssertTrue(requests[0].conversation.isEmpty)
-        XCTAssertEqual(flow.turns.map(\.entry.text), [question])
-        XCTAssertNotNil(flow.turns.first?.response)
+        XCTAssertEqual(flow.turns.map(\.entry.text), [hiddenQuestion.text, question])
+        XCTAssertNil(flow.turns.first?.response)
+        XCTAssertNotNil(flow.turns.last?.response)
         let saved = try await store.entries()
         XCTAssertEqual(saved.last?.kind, .question)
         XCTAssertEqual(saved.last?.text, question)
@@ -72,13 +73,58 @@ final class AskReportTests: XCTestCase {
         allowed.allowedUses.legalGuidance = false
         try await store.saveEntry(allowed)
         await flow.load()
-        XCTAssertNil(flow.turns.first?.response)
+        XCTAssertTrue(flow.turns.allSatisfy { $0.response == nil })
         _ = await flow.send("Bisa jelaskan lagi?")
         let asks = await client.asks()
         let followup = try XCTUnwrap(asks.last)
         XCTAssertFalse(followup.conversation.contains { $0.role == .assistant })
         let wire = String(decoding: try JSONEncoder().encode(followup), as: UTF8.self)
         for excluded in [hidden.text, hiddenQuestion.text, allowed.text] { XCTAssertFalse(wire.contains(excluded)) }
+    }
+
+    func testQuestionPermissionsPersistAndFilterDraftsConversationAndRetry() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = EncryptedEiraStore(directory: directory)
+        defer { try? store.deleteSecretData(); try? FileManager.default.removeItem(at: directory) }
+        try store.open()
+        let text = "Aku tinggal di Kota Bekasi, Jawa Barat. Apa pilihanku?"
+        let client = RecordingReportClient(faq: [4], draft: .init(fields: [
+            .provinceCity: .init(value: .text("Kota Bekasi, Jawa Barat"), quote: "Kota Bekasi, Jawa Barat")]))
+        let dependencies = AppDependencies(store: PrivateSessionStore(store), serverClient: client)
+        let ask = AskFlow(dependencies: dependencies)
+        _ = await ask.send(text)
+        let id = try XCTUnwrap(ask.turns.first?.id)
+        let report = ReportFlow(dependencies: dependencies)
+        await report.refresh()
+        XCTAssertEqual(report.draft.fields.first { $0.fieldName == .provinceCity }?.sourceEntryID, id)
+        let uses = AllowedUses(personalTimeline: true, legalGuidance: false, report: false)
+        await ask.setUses(uses, for: id)
+        XCTAssertEqual(ask.turns.first?.entry.allowedUses, uses)
+        XCTAssertNil(ask.turns.first?.response)
+        await report.load()
+        XCTAssertNil(report.draft.fields.first { $0.fieldName == .provinceCity }?.value)
+        await report.refresh()
+        let drafts = await client.drafts()
+        XCTAssertTrue(try XCTUnwrap(drafts.last).questions.isEmpty)
+        let beforeRetry = await client.asks().count
+        await ask.retry(try XCTUnwrap(ask.turns.first?.entry))
+        let afterRetry = await client.asks().count
+        XCTAssertEqual(beforeRetry, afterRetry)
+        _ = await ask.send("Bisa jelaskan pilihanku?")
+        let requests = await client.asks()
+        let wire = String(decoding: try JSONEncoder().encode(XCTUnwrap(requests.last)), as: UTF8.self)
+        XCTAssertFalse(wire.contains(text))
+        XCTAssertFalse(try XCTUnwrap(requests.last).conversation.contains { $0.role == .assistant })
+        store.lock()
+        try store.open()
+        let reopened = AskFlow(dependencies: .init(store: PrivateSessionStore(store), serverClient: client))
+        await reopened.load()
+        XCTAssertEqual(reopened.turns.first { $0.id == id }?.entry.allowedUses, uses)
+        XCTAssertNotNil(reopened.turns.first { $0.id == id })
+        await reopened.setUses(.init(personalTimeline: true, legalGuidance: true, report: true), for: id)
+        XCTAssertTrue(try XCTUnwrap(store.entries().first { $0.id == id }).allowedUses.report)
+        await reopened.retry(try XCTUnwrap(reopened.turns.first { $0.id == id }?.entry))
+        XCTAssertNotNil(reopened.turns.first { $0.id == id }?.response)
     }
 
     func testV1CaveatIsControlledByReturnedFAQNumbers() {

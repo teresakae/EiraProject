@@ -205,7 +205,7 @@ test('HTTP failures return clean errors with no SDK response text', async () => 
   assert.ok(!(await response.text()).includes('marker'));
 });
 
-test('Audio: in-memory multipart only, 4 MB limit, formats, Indonesian language list, neutral filename', async () => {
+test('Audio: in-memory multipart only, 4 MB limit, formats, Indonesian/English languages, neutral filename', async () => {
   const calls = [];
   const app = createService({ client: { audio: { transcriptions: { async create(input) { calls.push(input); return { text: 'teks rekaan' }; } } } } });
   const form = new FormData();
@@ -215,7 +215,8 @@ test('Audio: in-memory multipart only, 4 MB limit, formats, Indonesian language 
   const response = await fetch(new Request('http://localhost', { method: 'POST', headers: { Authorization: 'Bearer test-token' }, body: form }));
   assert.equal(response.status, 200);
   assert.equal(calls[0].file.name, 'audio.m4a');
-  assert.deepEqual(calls[0].languages, ['id']);
+  assert.deepEqual(calls[0].languages, ['id', 'en']);
+  assert.ok(!Object.hasOwn(calls[0], 'language'));
   assert.equal(calls[0].model, 'gpt-transcribe');
   assert.ok(!Object.hasOwn(calls[0], 'store'));
   await assert.rejects(app.transcribe(new File([new Uint8Array(4_000_001)], 'audio.m4a')), { status: 413 });

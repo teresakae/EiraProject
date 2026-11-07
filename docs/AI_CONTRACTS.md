@@ -173,9 +173,9 @@ Rules:
 
 Purpose: turn a voice clip into text.
 
-Input: the audio file, with an Indonesian language hint. The model takes a list of languages; how to encode that list in a raw request is UNVERIFIED, so use the SDK and check the API reference.
+Input: the audio file, with Indonesian and English language hints (`languages: ["id", "en"]`, PRODUCT C14). Use the SDK for multipart encoding. Do not also send a singular `language` field to OpenAI.
 
-Output: text. It goes into the text input as her message. She can read it before it counts.
+Output: text in the spoken language, without translation. It goes into the text input as her message. She can read it before it counts. The app's UI and AI replies remain Indonesian.
 
 Rules:
 

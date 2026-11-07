@@ -12,8 +12,12 @@ struct EiraApp: App {
                     CoverScreen(access: access).allowsHitTesting(false)
                 } else if let workspace = access.workspace {
                     PrivateArea(workspace: workspace, access: access).id(workspace.id)
-                } else if let gate = access.gate {
-                    PassphraseScreen(access: access, setup: gate == .setup)
+                } else if access.gate == .pin {
+                    CoverPINScreen(errorMessage: access.errorMessage,
+                                   onCancel: { access.cancelAccess() },
+                                   onSubmit: { _ = access.submitPIN($0) })
+                } else if access.gate == .migration {
+                    PassphraseScreen(access: access)
                 } else {
                     CoverScreen(access: access)
                 }

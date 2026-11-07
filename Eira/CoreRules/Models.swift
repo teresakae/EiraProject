@@ -183,6 +183,9 @@ struct CoverTask: Identifiable, Codable, Equatable, Sendable {
     var title: String
     let createdAt: Date
     var isCompleted: Bool
+    var body: String?
+    var isPinned: Bool?
+    var checklist: [CoverChecklistItem]?
 
     init(id: UUID = UUID(), title: String, createdAt: Date = Date(), isCompleted: Bool = false) {
         self.id = id
@@ -192,8 +195,15 @@ struct CoverTask: Identifiable, Codable, Equatable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title
+        case id, title, body, checklist
+        case isPinned = "is_pinned"
         case createdAt = "created_at"
         case isCompleted = "is_completed"
     }
+}
+
+struct CoverChecklistItem: Identifiable, Codable, Equatable, Sendable {
+    var id = UUID()
+    var text: String
+    var isCompleted = false
 }
