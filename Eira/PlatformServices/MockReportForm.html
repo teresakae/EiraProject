@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>Formulir uji</title>
+  <style>
+    :root { color-scheme: light dark; font-family: -apple-system, sans-serif; }
+    body { margin: 0; padding: 20px; line-height: 1.5; }
+    h1 { font-size: 1.5rem; margin: 0 0 8px; }
+    p { margin: 0 0 24px; }
+    label { display: block; margin: 22px 0 6px; font-weight: 600; }
+    input, select, textarea, button { font: inherit; box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #888; border-radius: 8px; background: Canvas; color: CanvasText; }
+    textarea { min-height: 120px; }
+    button { margin-top: 28px; font-weight: 600; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <h1>Formulir uji</h1>
+  <p>Isian ini hanya ada di ponselmu. Tombol kirim menampilkan isian yang diterima, tanpa mengirim ke mana pun.</p>
+  <form id="report-form">
+    <div id="fields"></div>
+    <button id="send" type="submit" disabled>Kirim ke formulir uji</button>
+  </form>
+  <section id="receipt" hidden aria-live="polite">
+    <h2>Isian yang diterima formulir uji</h2>
+    <p>Tidak ada yang dikirim ke SAPA atau tempat lain.</p>
+    <pre id="received-values"></pre>
+  </section>
+  <script>
+    'use strict';
+    let fieldSpecs = [];
+    // The native field list is the same list used by draft validation and review.
+    window.fillReport = function(values, specs) {
+      fieldSpecs = specs;
+      const fields = document.getElementById('fields');
+      fields.replaceChildren();
+      for (const spec of specs) {
+        const label = document.createElement('label');
+        label.htmlFor = spec.name;
+        label.textContent = spec.label;
+        let control;
+        if (spec.options || spec.kind === 'boolean') {
+          control = document.createElement('select');
+          control.add(new Option('Kosong', ''));
+          if (spec.kind === 'boolean') {
+            control.add(new Option('Ya', 'true'));
+            control.add(new Option('Tidak', 'false'));
+          } else {
+            for (const option of spec.options) control.add(new Option(option, option));
+          }
+        } else {
+          control = document.createElement(spec.name === 'description' ? 'textarea' : 'input');
+          control.maxLength = 5000;
+          if (spec.kind === 'integer') { control.type = 'number'; control.min = '1'; control.max = '100'; control.step = '1'; }
+          if (spec.kind === 'phone') { control.inputMode = 'numeric'; control.pattern = '[0-9]*'; }
+        }
+        control.id = spec.name;
+        control.name = spec.name;
+        control.autocomplete = 'off';
+        control.spellcheck = false;
+        const value = values[spec.name];
+        control.value = value === null || value === undefined ? '' : String(value);
+        fields.append(label, control);
+      }
+      document.getElementById('send').disabled = false;
+      return specs.length;
+    };
+    document.getElementById('report-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const values = {};
+      for (const spec of fieldSpecs) {
+        const text = document.getElementById(spec.name).value;
+        values[spec.name] = text === '' ? null : spec.kind === 'boolean' ? text === 'true'
+          : spec.kind === 'integer' ? Number(text) : text;
+      }
+      document.getElementById('received-values').textContent = JSON.stringify(values, null, 2);
+      document.getElementById('receipt').hidden = false;
+      document.getElementById('receipt').scrollIntoView({ block: 'start' });
+    });
+  </script>
+</body>
+</html>

@@ -7,9 +7,9 @@ You are building Eira, a native iOS app, at a one-day hackathon on Sat 7 Nov 202
 - Never commit, push, merge, create a branch, or change git history. The owner handles git operations.
 - For new files, dependencies, changes across three or more files, or work requiring close review: explain the plan in plain language and wait for approval. A precisely described small change may proceed. The owner approved this shared-base plan on 7 Nov 2026.
 - Lead with visible behaviour and plain language. No generic AI copy or marketing language.
-- Current phase: shared base only. Empty screens, in-memory storage and canned server responses are deliberate. Do not start feature work without a new request.
+- Current phase: Person B implementation approved on 7 Nov 2026, directly on main at the owner’s request. Cover, passphrase access, encrypted storage, Write and voice are in scope. The owner also requested the local server connection for all four endpoints.
 - C11 supersedes the original disguise: a to-do cover, opened by adding a task named exactly `eira`, with unrelated generated cover tasks. No plant-name setup. The base does not implement that access flow.
-- The fixed trigger is not an encryption secret. Key management is OPEN; a person must resolve it before the encrypted-storage phase.
+- C12 is approved: first access creates her private passphrase; later access requires it. No saved/default credential, automatic unlock or recovery. The fixed trigger and server API key are never storage encryption keys.
 
 ## Rule zero
 
@@ -117,6 +117,8 @@ xcrun devicectl device process launch --device "$EIRA_DEVICE_ID" org.eira.app
 Server commands: none yet. `server/` is intentionally empty; the server agent supplies its build, run and test commands in phase 1. Git does not retain empty directories, so use `mkdir -p server` in a fresh checkout if needed.
 
 ## Shared base contracts and ownership
+
+The contracts below describe the base checkpoint. Current Person B implementation and verification are recorded in `docs/codex-log-cover.md`; C12 and the owner’s local-server request supersede the stand-in-only status.
 
 - `Eira/CoreRules/Models.swift`: `Entry`, `AllowedUses`, `EntryKind`, `Event`, `ReportDraft`, `ReportDraftField`, `ReportValue` and `CoverTask`. Only Person B changes shared models after this base.
 - `Entry` keeps exact text and phone time immutable. `kind` distinguishes stories from her Ask questions. Events reference their entry and inherit its allowed uses; they do not copy the flags.

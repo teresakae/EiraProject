@@ -10,7 +10,7 @@ Three parts: the iOS app, a thin server, and the OpenAI API. The diagram below i
 |---|---|
 | Stack | SwiftUI. No third-party iOS libraries. Built in layers (see section 2). |
 | Storage | Two stores on the phone. **Secret store:** her entries, events and report draft, encrypted with CryptoKit AES-GCM. **Cover store:** ordinary to-do tasks, including the unrelated tasks generated for diary entries (DECIDED, C11). It is separate from private encryption, because the cover must show its contents before the actual app is opened. It holds nothing sensitive and no link back to any entry. |
-| Key | OPEN after C11. The literal task title `eira` opens the actual app but must not be used as an encryption secret. The previous secret-name derivation no longer applies. The team must choose replacement key management before encrypted storage is built. Keep task-trigger handling and key management in separate files. The base provides an in-memory store only. |
+| Key | DECIDED C12: a user-created private passphrase protects access to the encryption key. No saved credential, automatic unlock or recovery. Task-trigger handling and key handling stay separate. The trigger and server API key are never encryption keys. Implementation: random 256-bit storage key wrapped with PBKDF2-HMAC-SHA256 (600,000 rounds, random 32-byte salt), CryptoKit AES-GCM for both wrapping and records. The versioned envelope holds salt, wrapped key and ciphertext; none permits automatic unlock. |
 | File protection | iOS Data Protection on both stores. |
 | Backups | Secret store excluded from iCloud and device backup. The research notes list compromised iCloud accounts as a threat. |
 | Notifications | None. Do not request the permission. |
@@ -149,7 +149,7 @@ Check these on iOS, on a real iPhone where possible:
 |---|---|---|
 | iOS system frameworks | SwiftUI | UI |
 | iOS system frameworks | CryptoKit | Encryption |
-| iOS system frameworks | CommonCrypto | Conditional on the OPEN key-management decision; no implementation in the base |
+| iOS system frameworks | CommonCrypto | PBKDF2-HMAC-SHA256 for the C12 passphrase-derived wrapping key |
 | iOS system frameworks | AVFoundation | Voice recording |
 | iOS system frameworks | WebKit | SAPA form web view |
 | Server library | `openai` npm package on Node | Calls to OpenAI |

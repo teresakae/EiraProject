@@ -28,7 +28,7 @@ The slices are built in the phases below. Slice 7 is built only if time allows a
 | # | Slice | Delivers | Read | Fixtures that must pass | Owner |
 |---|---|---|---|---|---|
 | 1 | Server and one working call | A thin server with the extract endpoint, the key held on the server, `store: false`, the app token, a safe failure on refusal, and the model fallback. A way to call it from the app. | `ARCHITECTURE.md`, `AI_CONTRACTS.md` | E1 (call works, matches schema), refusal handling | A |
-| 2 | Entry | The to-do-list cover and the fixed `eira` add-task access flow (DECIDED C11; no secret-name setup), the encrypted store after key management is decided, lock on background, hide on inactive, delete everything. | `PRODUCT.md` (disguise and secret entry, cover), `ARCHITECTURE.md`, `SAFETY.md` | B1, DL1, DS1 | B |
+| 2 | Entry | The to-do-list cover and the fixed `eira` add-task access flow (DECIDED C11; no secret-name setup), the encrypted store protected by her private passphrase (C12), lock on background, hide on inactive, delete everything. | `PRODUCT.md` (disguise and secret entry, cover), `ARCHITECTURE.md`, `SAFETY.md` | B1, DL1, DS1 | B |
 | 3 | Stage 1: writing chat | Typed entries, the extract call, the timeline with quotes, the quote check, the editable violence type, unrelated cover tasks in the to-do list, allowed uses stored per entry, and the AI's reply in the chat (default rules in `AI_CONTRACTS.md` call 1; how replies work is open decision 5). | `PRODUCT.md` (Stage 1), `AI_CONTRACTS.md` (call 1, quote check) | E1, TG, Q1, Q5, P1, R1, N1, CV1 | B |
 | 4 | Stage 2: ask | The Ask chat grounded in the FAQ and allowed entries, non-judging rules, the plain-code caveat for answers 4, 7, 11, hand-off to a human service when appropriate. | `PRODUCT.md` (Stage 2), `AI_CONTRACTS.md` (call 2), `FAQ_APPROVED.md`, `SAFETY.md` | L1, L2, U2, V1, N1, FA1, FA2, FA3 | A (server side) and C (app side) |
 | 5 | Stage 3: report | The draft call, quote check per field, the review screen with states (empty, from her words, edited by her), correction by her, the confirmation, the web view that fills the SAPA form fields from her draft, the mock form bundled in the app, and the real/mock target setting (Debug always mock). The per-field copy fallback. She presses send; the app never does. | `PRODUCT.md` (Stage 3), `AI_CONTRACTS.md` (call 3), `SAPA_FORM.md`, `SAFETY.md` (confirmation) | Q1 to Q6, U1, S1, S2, S3, CF1, N1 | A (server side) and C (app side) |
@@ -91,7 +91,7 @@ Any decision can change during the day without breaking the plan. Follow these s
 - Canned server responses and the in-memory store stand in until the merge.
 - Each agent works on its own branch in its own folder. On one Mac, each agent uses its own simulator.
 - Only people merge. Codex agents never merge.
-- The to-do disguise and fixed `eira` access task are DECIDED (C11); per-story control (open decision 1) remains PROVISIONAL in `PRODUCT.md`. Key management is OPEN after C11 and must be decided before the encrypted-store slice. Language (open decision 3) is DECIDED: Indonesian. To change any decision, follow "Changing a decision" below.
+- The to-do disguise and fixed `eira` access task are DECIDED (C11); per-story control (open decision 1) remains PROVISIONAL in `PRODUCT.md`. C12 decides passphrase setup and unlock, with no automatic unlock or recovery. Language (open decision 3) is DECIDED: Indonesian. To change any decision, follow "Changing a decision" below.
 
 ## Before the demo
 

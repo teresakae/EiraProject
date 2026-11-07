@@ -27,6 +27,8 @@ struct Entry: Identifiable, Codable, Equatable, Sendable {
     let source: EntrySource
     let kind: EntryKind
     var allowedUses: AllowedUses
+    // AI text stays separate from her immutable words and is never a quote source.
+    var writeReply: String?
 
     init(id: UUID = UUID(), createdAt: Date = Date(), text: String,
          source: EntrySource = .text, kind: EntryKind = .story,
@@ -43,6 +45,7 @@ struct Entry: Identifiable, Codable, Equatable, Sendable {
         case id, text, source, kind
         case createdAt = "created_at"
         case allowedUses = "allowed_uses"
+        case writeReply = "write_reply"
     }
 }
 

@@ -1,10 +1,15 @@
 import Foundation
 
 protocol ServerClient: Sendable {
+    func cancelPendingRequests()
     func extract(_ request: ExtractRequest) async throws -> ExtractResponse
     func ask(_ request: AskRequest) async throws -> AskResponse
     func draft(_ request: DraftRequest) async throws -> DraftResponse
     func transcribe(_ request: TranscribeRequest) async throws -> String
+}
+
+extension ServerClient {
+    func cancelPendingRequests() { }
 }
 
 struct ExtractRequest: Codable, Equatable, Sendable {
