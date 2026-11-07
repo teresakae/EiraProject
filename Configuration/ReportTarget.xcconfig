@@ -1,2 +1,7 @@
 // The later demo branch changes this one value to mock.
 EIRA_RELEASE_REPORT_TARGET = real
+
+// Local simulator credentials stay in the ignored build directory, never in source control.
+EIRA_SERVER_URL =
+EIRA_APP_TOKEN =
+#include? "../.build/LocalServer.xcconfig"

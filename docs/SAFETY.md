@@ -12,7 +12,7 @@ It lowers the chance of casual discovery. It does not stop a determined search, 
 
 ## The "he opens it" test
 
-The cover must survive inspection. Someone who opens the app must see a working to-do list, not a static fake screen. Nothing on any cover screen mentions help, abuse, reporting, or the real app. C11 in `PRODUCT.md` records the cover and access decision: adding a new task named exactly `eira` opens the actual app; any other title adds an ordinary task. The fixed trigger is discoverable and is not an encryption secret. Replacement key management is OPEN.
+The cover must survive inspection. Someone who opens the app must see a working to-do list, not a static fake screen. Nothing on any cover screen mentions help, abuse, reporting, or the real app. C11 in `PRODUCT.md` records the cover and access decision: adding a new task named exactly `eira` opens the actual app; any other title adds an ordinary task. The fixed trigger is discoverable and is not an encryption secret. C12 requires her own private passphrase: setup on first access, typed unlock thereafter, no automatic unlock or recovery. Deletion makes the next access start fresh setup.
 
 ## Rules
 

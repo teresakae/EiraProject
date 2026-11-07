@@ -69,7 +69,7 @@ The notes report no Indonesian tool combining a disguised private record, a plai
 
 Eira is one flow in which her own words are written once and then reused at every stage. Here is the walk-through, as designed, for Sari.
 
-**Entry.** The app opens as a working to-do list. Adding a new task named exactly `eira` opens the actual app. No user-chosen secret-name setup is needed. Key management for encrypted storage is OPEN after this change. Her records are encrypted on her phone, and the research notes call for a fast "delete everything" control.
+**Entry.** The app opens as a working to-do list. Adding a new task named exactly `eira` opens the actual app. No user-chosen secret-name setup is needed. C12 requires her own private passphrase at first access and on later visits, with no automatic unlock or recovery. Her records are encrypted on her phone, and the research notes call for a fast "delete everything" control.
 
 **Stage 1: she writes.** She chats in text, or optionally speaks. Speech is turned into text and the audio is thrown away. The AI builds a dated timeline from what she says: when, what happened, any injuries or witnesses. Each event keeps a quote of her own words, and nothing is added that she did not say. For each real entry Eira also writes an unrelated, ordinary cover task, so the cover remains a working to-do list. The task contains nothing from her entry and has no link back to it.
 
@@ -135,7 +135,7 @@ The proposal requires all code to be written on the day, so the work before 7 No
 
 1. Before 7 Nov: run the rehearsal tests in the OpenAI test plan (structured output, legal tagging, quote check, voice, privacy settings, cost).
 2. Before 7 Nov: a lawyer, ideally at LBH APIK Jakarta, reviews the flagged FAQ answers, and the device tests run on a real phone.
-3. On 7 Nov, entry: the to-do cover, the `eira` add-task access flow, and encrypted storage on the phone (replacement key management must be decided first).
+3. On 7 Nov, entry: the to-do cover, the `eira` add-task access flow, and encrypted storage on the phone (C12: her own private passphrase, required again on later access).
 4. On 7 Nov, stage 1: the writing chat that builds the timeline with quotes, with optional voice.
 5. On 7 Nov, stage 2: the counseling chat that uses the FAQ and the timeline together and names the UU PKDRT article.
 6. On 7 Nov, stage 3: the SAPA 129 draft with a quote behind each field, a review screen, and sending by her alone.

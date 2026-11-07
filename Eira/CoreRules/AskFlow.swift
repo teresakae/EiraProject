@@ -11,6 +11,7 @@ final class AskFlow {
 
     private let store: any EiraStore
     private let client: any ServerClient
+    private var active = true
     private var replies: [UUID: AskResponse] = [:]
     private var replySources: [UUID: Set<UUID>] = [:]
     private(set) var turns: [Turn] = []
@@ -20,6 +21,13 @@ final class AskFlow {
     init(dependencies: AppDependencies) {
         store = dependencies.store
         client = dependencies.serverClient
+        dependencies.lifetime?.onLock { [weak self] in
+            self?.active = false
+            self?.turns = []
+            self?.replies = [:]
+            self?.replySources = [:]
+            self?.errorMessage = nil
+        }
     }
 
     static func needsLawyerCaveat(_ response: AskResponse) -> Bool {
@@ -27,6 +35,7 @@ final class AskFlow {
     }
 
     private func show(_ entries: [Entry]) {
+        guard active else { return }
         let allowedIDs = Set(entries.filter { $0.allowedUses.legalGuidance }.map(\.id))
         // A previous answer may contain a story whose permission has since changed.
         replies = replies.filter { replySources[$0.key, default: []].isSubset(of: allowedIDs) }
@@ -37,11 +46,11 @@ final class AskFlow {
 
     func load() async {
         do { show(try await store.entries()) }
-        catch { errorMessage = "Pertanyaanmu belum bisa dibuka. Coba lagi." }
+        catch { if active { errorMessage = "Pertanyaanmu belum bisa dibuka. Coba lagi." } }
     }
 
     func send(_ text: String) async -> Bool {
-        guard !isWorking, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        guard active, !isWorking, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         isWorking = true
         errorMessage = nil
         defer { isWorking = false }
@@ -50,13 +59,14 @@ final class AskFlow {
             try await store.saveEntry(question)
             return await answer(question)
         } catch {
+            guard active else { return false }
             errorMessage = "Pertanyaanmu belum tersimpan. Coba lagi."
             return false
         }
     }
 
     func retry(_ entry: Entry) async {
-        guard !isWorking else { return }
+        guard active, !isWorking else { return }
         isWorking = true
         errorMessage = nil
         defer { isWorking = false }
@@ -78,7 +88,9 @@ final class AskFlow {
             let response = try await client.ask(AskRequest(
                 question: question.text, conversation: conversation,
                 entries: sources.filter { $0.id != question.id }, events: try await store.events()))
+            guard active, !Task.isCancelled else { return true }
             let current = try await store.entries()
+            guard active else { return true }
             let sourceIDs = Set(sources.map(\.id))
             let currentIDs = Set(current.filter { $0.allowedUses.legalGuidance }.map(\.id))
             if sourceIDs.isSubset(of: currentIDs) {
@@ -88,6 +100,7 @@ final class AskFlow {
             show(current)
             return true
         } catch {
+            guard active else { return true }
             errorMessage = "Jawabannya belum bisa dimuat. Pertanyaanmu tetap tersimpan. Kamu bisa mencoba lagi."
             // The question was saved; clear the composer without creating a duplicate on retry.
             return true
