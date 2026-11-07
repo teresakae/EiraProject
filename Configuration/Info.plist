@@ -18,7 +18,7 @@
         <true/>
     </dict>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Mikrofon dipakai saat kamu memilih merekam suara untuk diubah menjadi teks. Berkas suara dihapus setelahnya.</string>
+    <string>The microphone is used when you choose to record audio for transcription. The audio file is deleted afterwards.</string>
     <key>EiraReportTarget</key>
     <string>$(EIRA_REPORT_TARGET)</string>
 </dict>

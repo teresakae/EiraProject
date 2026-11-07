@@ -75,3 +75,23 @@ Owner approved replacing the task cover with the supplied Notes design, keeping 
 `CoverPINScreen` is standalone with `onCancel` and `onSubmit(String)` callbacks; it has no current route from the cover, no PIN persistence, and no verification. C13 access and encryption are unchanged. Attachments and photos remain excluded.
 
 Validation: Debug simulator build passed. Both CoverDesignTests passed: legacy decoding, note/checklist/pinning persistence, cover deletion without unlocking private storage, and render captures for home, editor and PIN. Reviewed captures and adjusted checklist spacing and amber back control. The wider suite's previously observed Keychain/migration failures were not re-investigated in this visual change.
+
+## English private screens — 7 Nov 2026
+
+Owner approved Home / Diary / Support navigation, the supplied home and writing-screen layout, and English UI and AI replies (PRODUCT C17). PrivateArea now opens Home; Write in diary presents WriteScreen, Talk it through opens Ask, diary rows open original entries and their sourced timeline details, and Support links to Ask and Report. Retained native iOS tab/navigation controls, existing PIN access, device-held encryption, deletion and allowed-use controls. No red exit button was added.
+
+English copy covers Notes/PIN, writing, Ask, Report, confirmation/privacy, mock form, errors and microphone purpose text. English report labels map to unchanged SAPA values. Free-text values and original entries/quotes are never translated. Server prompts request English output; source FAQ files were not edited. English fallback and caveat are deterministic. Cover-task filtering includes English private vocabulary. No live OpenAI calls or real SAPA submission were made.
+
+Validation: Debug build passed. All 19 server tests passed. Home/diary renders, font loading, original-source preservation, every report-option label, cover compatibility and mock-form tests passed. The selected iOS run executed 37 tests with one skipped and one existing encrypted-storage test failure; the wider suite also reports Keychain -34018 and related migration/access failures. These were not repaired in this UI change. Checked render captures for Home, Diary, Notes and PIN. Detail-completeness chips, attachments/photos and the inaccurate local-only privacy claim remain excluded under the agreed scope.
+
+## Writing-page correction — 7 Nov 2026
+
+Owner clarified that the writing screen must be its own page and must include the pictured prompt buttons (PRODUCT C18). Replaced the combined composer/history sheet with a pushed writing page from Home or Diary, hiding the tab/navigation bars on that page. Matched the grey canvas, 300-point writing card, six prompt topics, three chip rows and Talk it through / Done footer. Chip taps show optional writing questions without changing the text; primary-topic checkmarks do not assert AI completeness. The photo chip supports a written description only. Retained truthful privacy text and an in-card microphone for record/transcribe/discard.
+
+Done saves through the existing WriteFlow before returning. Talk it through saves a non-empty entry before opening Ask. Empty Done returns without creating a record; empty Talk opens Ask. Cancelling or leaving the page cancels recording. Previous entries, source quotes, allowed uses, replies and editable timeline details remain available through Diary.
+
+## SAPA contact and report tracker — 7 Nov 2026
+
+Owner approved C23 and C24 in `PRODUCT.md`. C23 replaces the "messages only" default, which steered SAPA to WhatsApp, with No preference preselected, and adds notes on the phone number and trusted-person fields. C24 adds a fixed sample tracker shown only in mock builds. The live path is in `ARCHITECTURE.md` section 10 and is not built.
+
+Validation: Debug and Release simulator tests passed (67 run, 1 skipped). The Support link, tracker screen, contact choices and after-sending text were checked in the simulator.

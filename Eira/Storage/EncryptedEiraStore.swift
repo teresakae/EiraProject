@@ -9,6 +9,8 @@ final class EncryptedEiraStore: EiraStore {
         var entries: [Entry] = []
         var events: [Event] = []
         var draft: ReportDraft?
+        // Optional so records written before this field still open.
+        var facts: [TalkFact]?
     }
 
     private let directory: URL
@@ -170,7 +172,9 @@ final class EncryptedEiraStore: EiraStore {
     func deleteEntry(id: UUID) throws {
         var updated = try read()
         updated.entries.removeAll { $0.id == id }
+        updated.entries = updated.entries.map { $0.removingAnswer(drawnFrom: id) }
         updated.events.removeAll { $0.entryID == id }
+        updated.facts?.removeAll { $0.sourceEntryID == id }
         updated.draft = updated.draft.map { draft in
             ReportDraft(fields: draft.fields.map { field in
                 field.sourceEntryID == id && field.status != .editedByHer
@@ -194,13 +198,21 @@ final class EncryptedEiraStore: EiraStore {
         try save(updated)
     }
 
+    func talkFacts() throws -> [TalkFact] { try read().facts ?? [] }
+
+    func saveTalkFacts(_ facts: [TalkFact]) throws {
+        var updated = try read()
+        updated.facts = facts
+        try save(updated)
+    }
+
     func coverTasks() throws -> [CoverTask] {
         guard FileManager.default.fileExists(atPath: coverURL.path) else { return [] }
         return try JSONDecoder().decode([CoverTask].self, from: Data(contentsOf: coverURL))
     }
 
     func saveCoverTask(_ task: CoverTask) throws {
-        guard task.title != "eira" else { throw StoreError.format }
+        guard task.title != "Eira" else { throw StoreError.format }
         var tasks = try coverTasks()
         if let index = tasks.firstIndex(where: { $0.id == task.id }) { tasks[index] = task }
         else { tasks.append(task) }
@@ -234,6 +246,8 @@ final class PrivateSessionStore: EiraStore {
     }
     func reportDraft() async throws -> ReportDraft? { try store.checkSession(id); return try store.reportDraft() }
     func saveReportDraft(_ draft: ReportDraft) async throws { try store.checkSession(id); try store.saveReportDraft(draft) }
+    func talkFacts() async throws -> [TalkFact] { try store.checkSession(id); return try store.talkFacts() }
+    func saveTalkFacts(_ facts: [TalkFact]) async throws { try store.checkSession(id); try store.saveTalkFacts(facts) }
     func coverTasks() async throws -> [CoverTask] { try store.checkSession(id); return try store.coverTasks() }
     func saveCoverTask(_ task: CoverTask) async throws { try store.checkSession(id); try store.saveCoverTask(task) }
     func deleteCoverTask(id taskID: UUID) async throws { try store.checkSession(id); try store.deleteCoverTask(id: taskID) }

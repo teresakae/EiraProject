@@ -3,7 +3,8 @@ import Observation
 
 @MainActor @Observable
 final class ReportFlow {
-    enum Stage { case review, confirmation, form }
+    enum Stage { case review, confirmation, form, afterSend }
+    enum ContactPreference { case noPreference, noWhatsApp, whatsAppOK }
 
     private let store: any EiraStore
     private let client: any ServerClient
@@ -12,7 +13,15 @@ final class ReportFlow {
     private(set) var isWorking = false
     private(set) var stage = Stage.review
     private(set) var deliveryDraft: ReportDraft?
+    private(set) var references: [LegalReferences.Reference] = []
+    // Her choice for this visit only. It is not stored and resets on lock.
+    var contactPreference = ContactPreference.noPreference
     var errorMessage: String?
+
+    /// What the form receives and what the review screen shows.
+    var formDraft: ReportDraft? {
+        deliveryDraft.map { Self.withContactLine($0, preference: contactPreference) }
+    }
 
     init(dependencies: AppDependencies) {
         store = dependencies.store
@@ -22,6 +31,8 @@ final class ReportFlow {
             self?.draft = ReportDraft()
             self?.deliveryDraft = nil
             self?.stage = .review
+            self?.references = []
+            self?.contactPreference = .noPreference
             self?.errorMessage = nil
         }
     }
@@ -40,9 +51,21 @@ final class ReportFlow {
         defer { isWorking = false }
         do {
             let loaded = try await currentDraft()
-            if active { draft = loaded }
+            let entries = try await store.entries()
+            let events = try await store.events()
+            guard active else { return }
+            draft = loaded
+            references = LegalReferences.references(entries: entries, events: events)
         }
-        catch { if active { errorMessage = "Drafmu belum bisa dibuka. Coba lagi." } }
+        catch { if active { errorMessage = "Your draft could not be opened. Try again." } }
+    }
+
+    // Builds the first draft on open. A draft holding any value or any edit of hers stays as it is.
+    func fillIfEmpty() async {
+        guard active, draft.fields.allSatisfy({ $0.value == nil && $0.status != .editedByHer }),
+              let entries = try? await store.entries(),
+              entries.contains(where: { $0.kind == .story && $0.allowedUses.report }) else { return }
+        await refresh()
     }
 
     func refresh() async {
@@ -59,16 +82,16 @@ final class ReportFlow {
             let updated = ReportFields.merged(response, keeping: saved, entries: currentEntries)
             try await store.saveReportDraft(updated)
             if active { draft = updated }
-        } catch { if active { errorMessage = "Draf belum bisa diperbarui. Draf yang tersimpan tetap ada." } }
+        } catch { if active { errorMessage = "The draft could not be refreshed. Your saved draft is unchanged." } }
     }
 
     func edit(_ name: ReportFieldName, text: String) async -> Bool {
         guard active else { return false }
         let value = ReportFields.editedValue(text, for: name)
         guard ReportFields.valid(value, for: name) else {
-            errorMessage = name == .victimAge ? "Isi usia dengan angka bulat 1 sampai 100."
-                : ReportFields.isPhone(name) ? "Nomor telepon hanya boleh berisi angka 0–9."
-                : "Pilih nilai yang tersedia, atau isi teks paling banyak 5.000 karakter."
+            errorMessage = name == .victimAge ? "Enter a whole-number age from 1 to 100."
+                : ReportFields.isPhone(name) ? "Phone numbers can contain only digits 0–9."
+                : "Choose an available value, or enter up to 5,000 characters."
             return false
         }
         do {
@@ -79,11 +102,13 @@ final class ReportFlow {
             try await store.saveReportDraft(updated)
             guard active else { return false }
             draft = updated
+            // She edited this from the review screen and sees the new value there.
+            if stage == .confirmation { deliveryDraft = updated }
             errorMessage = nil
             return true
         } catch {
             guard active else { return false }
-            errorMessage = "Perubahanmu belum tersimpan. Coba lagi."
+            errorMessage = "Your changes could not be saved. Try again."
             return false
         }
     }
@@ -100,7 +125,7 @@ final class ReportFlow {
             draft = checked
             deliveryDraft = checked
             stage = .confirmation
-        } catch { if active { errorMessage = "Draf belum bisa diperiksa. Formulir belum dibuka." } }
+        } catch { if active { errorMessage = "The draft could not be checked. The form has not been opened." } }
     }
 
     func openConfirmedForm() async {
@@ -113,7 +138,7 @@ final class ReportFlow {
             guard checked == deliveryDraft else {
                 draft = checked
                 closeDelivery()
-                errorMessage = "Draf atau izin penggunaan catatan berubah. Periksa kembali sebelum membuka formulir."
+                errorMessage = "The draft or entry permissions changed. Review them again before opening the form."
                 return
             }
             guard active else { return }
@@ -121,13 +146,46 @@ final class ReportFlow {
         } catch {
             guard active else { return }
             closeDelivery()
-            errorMessage = "Draf belum bisa diperiksa. Formulir belum dibuka."
+            errorMessage = "The draft could not be checked. The form has not been opened."
         }
+    }
+
+    func finishForm() {
+        guard stage == .form else { return }
+        stage = .afterSend
     }
 
     func closeDelivery() {
         stage = .review
         deliveryDraft = nil
+    }
+
+    func copyAllText() async -> String? {
+        do {
+            let checked = try await currentDraft()
+            guard active else { return nil }
+            return Self.withContactLine(checked, preference: contactPreference).fields
+                .filter { $0.value != nil }
+                .map { "\(SafetyStrings.label($0.fieldName)): \(SafetyStrings.display($0.value, for: $0.fieldName))" }
+                .joined(separator: "\n\n")
+        } catch {
+            guard active else { return nil }
+            errorMessage = "The text could not be copied. Try again."
+            return nil
+        }
+    }
+
+    // The form has no contact-preference field, so her choice travels in the description.
+    // ponytail: if the line would pass the form's limit it is left out, and the review shows that truthfully.
+    static func withContactLine(_ draft: ReportDraft, preference: ContactPreference) -> ReportDraft {
+        guard let line = SafetyStrings.contactLine(preference),
+              let index = draft.fields.firstIndex(where: { $0.fieldName == .description }) else { return draft }
+        let current = ReportFields.text(draft.fields[index].value)
+        let combined = current.isEmpty ? line : "\(current)\n\n\(line)"
+        guard ReportFields.valid(.text(combined), for: .description) else { return draft }
+        var updated = draft
+        updated.fields[index].value = .text(combined)
+        return updated
     }
 
     func copyText(for name: ReportFieldName) async -> String? {
@@ -139,7 +197,7 @@ final class ReportFlow {
             return ReportFields.text(value)
         } catch {
             guard active else { return nil }
-            errorMessage = "Isian belum bisa disalin. Coba lagi."
+            errorMessage = "The field could not be copied. Try again."
             return nil
         }
     }

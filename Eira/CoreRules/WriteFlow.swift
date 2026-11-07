@@ -34,7 +34,7 @@ final class WriteFlow {
                 guard let entry = loaded.first(where: { $0.id == event.entryID }) else { return nil }
                 return QuoteCheck.validated(event, against: entry)
             }
-        } catch { if active { errorMessage = "Catatanmu belum bisa dibuka. Coba lagi." } }
+        } catch { if active { errorMessage = "Your entries could not be opened. Try again." } }
     }
 
     func submit() {
@@ -70,13 +70,13 @@ final class WriteFlow {
             current.writeReply = response.reply
             try await store.saveEntry(current)
             let title = response.coverTask.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !title.isEmpty, title != "eira" else { throw StoreError.format }
+            guard !title.isEmpty, title != "Eira" else { throw StoreError.format }
             try await store.saveCoverTask(CoverTask(title: title))
             await load()
         } catch {
             if active, !Task.isCancelled {
-                errorMessage = saved ? "Catatanmu tersimpan. Balasan atau linimasanya belum bisa dimuat."
-                    : "Catatanmu belum tersimpan. Coba lagi."
+                errorMessage = saved ? "Your entry is saved. Its reply or timeline could not be loaded."
+                    : "Your entry could not be saved. Try again."
             }
         }
         return saved
@@ -88,7 +88,7 @@ final class WriteFlow {
             entry.allowedUses = uses
             try await store.saveEntry(entry)
             await load()
-        } catch { if active { errorMessage = "Pilihanmu belum tersimpan. Coba lagi." } }
+        } catch { if active { errorMessage = "Your choices could not be saved. Try again." } }
     }
 
     func setType(_ type: ViolenceType, for id: UUID) async {
@@ -100,12 +100,12 @@ final class WriteFlow {
             let entryID = all[index].entryID
             try await store.saveEvents(all.filter { $0.entryID == entryID }, for: entryID)
             await load()
-        } catch { if active { errorMessage = "Perubahanmu belum tersimpan. Coba lagi." } }
+        } catch { if active { errorMessage = "Your changes could not be saved. Try again." } }
     }
 
     func deleteEntry(_ id: UUID) async {
         do { try await store.deleteEntry(id: id); await load() }
-        catch { if active { errorMessage = "Catatanmu belum bisa dihapus. Coba lagi." } }
+        catch { if active { errorMessage = "Your entry could not be deleted. Try again." } }
     }
 
     func stop() {

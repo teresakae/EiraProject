@@ -129,9 +129,8 @@ final class ReportFormTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(500))
         snapshot(review.view, name: "Report review with source and states")
         await flow.prepareConfirmation()
-        let confirmed = try XCTUnwrap(flow.deliveryDraft)
         let confirmation = UIHostingController(rootView: NavigationStack {
-            ReportConfirmationScreen(draft: confirmed, flow: flow)
+            ReportConfirmationScreen(flow: flow)
         })
         window.rootViewController = confirmation
         try await Task.sleep(for: .milliseconds(500))

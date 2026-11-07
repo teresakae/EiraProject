@@ -16,28 +16,28 @@ struct AllowedUsesControl: View {
             NavigationStack {
                 Form {
                     if entry.kind == .story {
-                        Toggle("Linimasa pribadi", isOn: binding(\.personalTimeline))
+                        Toggle("Personal timeline", isOn: binding(\.personalTimeline))
                     }
-                    Toggle("Panduan hukum", isOn: binding(\.legalGuidance))
-                    Toggle("Laporan", isOn: binding(\.report))
+                    Toggle("Legal guidance", isOn: binding(\.legalGuidance))
+                    Toggle("Report", isOn: binding(\.report))
                     if entry.kind == .story {
-                        Text("Mengubah pilihan ini tidak menghapus catatanmu. Catatan baru tetap dikirim untuk menyusun linimasa.")
+                        Text("Changing these choices does not delete your entry. New entries are still sent to build your timeline.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }.disabled(isSaving)
-                .navigationTitle("Penggunaan catatan")
+                .navigationTitle("Entry uses")
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbar { Button("Selesai") { showsSheet = false } }
+                .toolbar { Button("Done") { showsSheet = false } }
             }.presentationDetents([.medium])
         }
     }
 
     private var current: AllowedUses { entry.allowedUses }
     private var summary: String {
-        let uses = [(entry.kind == .story && current.personalTimeline, "linimasa"),
-                    (current.legalGuidance, "panduan hukum"), (current.report, "laporan")]
+        let uses = [(entry.kind == .story && current.personalTimeline, "timeline"),
+                    (current.legalGuidance, "legal guidance"), (current.report, "report")]
             .filter(\.0).map(\.1)
-        return uses.isEmpty ? "Tidak digunakan di tahap lain · Ubah" : "Digunakan untuk \(uses.joined(separator: ", ")) · Ubah"
+        return uses.isEmpty ? "Not used elsewhere · Change" : "Used for \(uses.joined(separator: ", ")) · Change"
     }
 
     private func binding(_ path: WritableKeyPath<AllowedUses, Bool>) -> Binding<Bool> {

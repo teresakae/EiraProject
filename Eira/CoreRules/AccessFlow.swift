@@ -19,7 +19,7 @@ final class AccessFlow {
 
     // Called with the unmodified title; case and whitespace are significant.
     func addTask(_ title: String) async throws {
-        if title == "eira" {
+        if title == "Eira" {
             guard !isInactive, !Task.isCancelled else { return }
             guard workspace == nil else { return }
             gate = .pin
@@ -32,7 +32,7 @@ final class AccessFlow {
     func submitPIN(_ pin: String) -> Bool {
         guard gate == .pin, !isInactive else { return false }
         guard pin == "1111" else {
-            errorMessage = "PIN salah. Coba lagi."
+            errorMessage = "Incorrect PIN. Try again."
             return false
         }
         do {
@@ -46,7 +46,7 @@ final class AccessFlow {
             errorMessage = nil
             return true
         } catch {
-            errorMessage = "Catatan belum bisa dibuka. Coba lagi."
+            errorMessage = "The notes could not be opened. Try again."
             return false
         }
     }
@@ -64,7 +64,7 @@ final class AccessFlow {
             return true
         } catch {
             if token == attempt {
-                errorMessage = "Belum bisa dibuka. Periksa frasa sandimu dan coba lagi. Catatan yang ada tidak diubah."
+                errorMessage = "Could not open your entries. Check your passphrase and try again. Existing entries have not changed."
             }
             return false
         }
@@ -91,7 +91,7 @@ final class AccessFlow {
             workspace?.stop()
             workspace = nil
             gate = nil
-            errorMessage = "Perubahan belum selesai. Coba lagi."
+            errorMessage = "The change could not be completed. Try again."
         }
     }
 }

@@ -85,7 +85,7 @@ final class HTTPServerClientTests: XCTestCase {
         XCTAssertEqual(entry.text, m1)
         XCTAssertFalse(try XCTUnwrap(entry.writeReply).isEmpty)
         let coverTask = try XCTUnwrap(store.coverTasks().first)
-        XCTAssertNotEqual(coverTask.title, "eira")
+        XCTAssertNotEqual(coverTask.title, "Eira")
         XCTAssertFalse(coverTask.title.isEmpty)
         let ask = AskFlow(dependencies: dependencies)
         let question = "Kalau aku lapor, apa suamiku langsung ditangkap?"

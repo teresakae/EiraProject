@@ -4,12 +4,17 @@ protocol ServerClient: Sendable {
     func cancelPendingRequests()
     func extract(_ request: ExtractRequest) async throws -> ExtractResponse
     func ask(_ request: AskRequest) async throws -> AskResponse
+    func talk(_ request: TalkRequest) async throws -> TalkResponse
     func draft(_ request: DraftRequest) async throws -> DraftResponse
     func transcribe(_ request: TranscribeRequest) async throws -> String
 }
 
 extension ServerClient {
     func cancelPendingRequests() { }
+    // A client without the talk call treats every message as a question for the Ask route.
+    func talk(_ request: TalkRequest) async throws -> TalkResponse {
+        TalkResponse(reply: "", isLegalQuestion: true, quickReplies: [], facts: [])
+    }
 }
 
 struct ExtractRequest: Codable, Equatable, Sendable {
@@ -115,6 +120,49 @@ struct AskResponse: Codable, Equatable, Sendable {
     }
 }
 
+struct TalkRequest: Encodable, Equatable, Sendable {
+    let message: String?
+    let conversation: [AskMessage]
+    let entries: [AskContextEntry]
+
+    init(message: String?, conversation: [AskMessage], entries: [Entry], events: [Event]) {
+        self.message = message
+        self.conversation = conversation
+        self.entries = entries.filter { $0.allowedUses.legalGuidance }.map { entry in
+            AskContextEntry(text: entry.text, events: events.filter { $0.entryID == entry.id }.map(ExtractedEvent.init))
+        }
+    }
+
+    enum CodingKeys: String, CodingKey { case message, conversation, entries }
+
+    // The server requires the key, so an empty message is sent as an explicit null.
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(message, forKey: .message)
+        try container.encode(conversation, forKey: .conversation)
+        try container.encode(entries, forKey: .entries)
+    }
+}
+
+struct TalkFactResponse: Codable, Equatable, Sendable {
+    let category: TalkFactCategory
+    let value: String
+    let quote: String
+}
+
+struct TalkResponse: Codable, Equatable, Sendable {
+    let reply: String
+    let isLegalQuestion: Bool
+    let quickReplies: [String]
+    let facts: [TalkFactResponse]
+
+    enum CodingKeys: String, CodingKey {
+        case reply, facts
+        case isLegalQuestion = "is_legal_question"
+        case quickReplies = "quick_replies"
+    }
+}
+
 struct DraftRequest: Encodable, Equatable, Sendable {
     let entries: [String]
     let questions: [String]
@@ -122,7 +170,7 @@ struct DraftRequest: Encodable, Equatable, Sendable {
     init(entries: [Entry]) {
         let allowed = entries.filter { $0.allowedUses.report }
         self.entries = allowed.filter { $0.kind == .story }.map(\.text)
-        self.questions = allowed.filter { $0.kind == .question }.map(\.text)
+        self.questions = allowed.filter { $0.kind != .story }.map(\.text)
     }
 }
 

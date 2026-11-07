@@ -14,10 +14,13 @@ struct AllowedUses: Codable, Equatable, Sendable {
 
 enum EntrySource: String, Codable, Sendable {
     case text, voice
+    // Suggested wording she tapped. Never a quote source for noted facts.
+    case quickReply = "quick_reply"
 }
 
 enum EntryKind: String, Codable, Sendable {
-    case story, question
+    // A correction holds her own wording from fixing a noted fact.
+    case story, question, correction
 }
 
 struct Entry: Identifiable, Codable, Equatable, Sendable {
@@ -29,6 +32,9 @@ struct Entry: Identifiable, Codable, Equatable, Sendable {
     var allowedUses: AllowedUses
     // AI text stays separate from her immutable words and is never a quote source.
     var writeReply: String?
+    // Eira's answer to a question, with the entries it drew on. Only shown while they all stay allowed.
+    var talkAnswer: AskResponse?
+    var talkAnswerSources: [UUID]?
 
     init(id: UUID = UUID(), createdAt: Date = Date(), text: String,
          source: EntrySource = .text, kind: EntryKind = .story,
@@ -46,6 +52,17 @@ struct Entry: Identifiable, Codable, Equatable, Sendable {
         case createdAt = "created_at"
         case allowedUses = "allowed_uses"
         case writeReply = "write_reply"
+        case talkAnswer = "talk_answer"
+        case talkAnswerSources = "talk_answer_sources"
+    }
+
+    // An answer can repeat a deleted entry's details, so it goes with that entry.
+    func removingAnswer(drawnFrom id: UUID) -> Entry {
+        guard talkAnswerSources?.contains(id) == true else { return self }
+        var updated = self
+        updated.talkAnswer = nil
+        updated.talkAnswerSources = nil
+        return updated
     }
 }
 
@@ -89,6 +106,35 @@ struct Event: Identifiable, Codable, Equatable, Sendable {
         case whenText = "when_text"
         case whatHappened = "what_happened"
         case violenceType = "pkdrt_type"
+        case userEdited = "user_edited"
+    }
+}
+
+enum TalkFactCategory: String, CaseIterable, Codable, Sendable {
+    case who, what, when, `where`
+}
+
+struct TalkFact: Identifiable, Codable, Equatable, Sendable {
+    let id: UUID
+    let category: TalkFactCategory
+    var value: String
+    var quote: String?
+    var sourceEntryID: UUID?
+    var userEdited: Bool
+
+    init(id: UUID = UUID(), category: TalkFactCategory, value: String, quote: String?,
+         sourceEntryID: UUID?, userEdited: Bool = false) {
+        self.id = id
+        self.category = category
+        self.value = value
+        self.quote = quote
+        self.sourceEntryID = sourceEntryID
+        self.userEdited = userEdited
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, category, value, quote
+        case sourceEntryID = "source_entry_id"
         case userEdited = "user_edited"
     }
 }

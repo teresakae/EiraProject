@@ -10,13 +10,13 @@ struct PassphraseScreen: View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("Frasa sandi lama", text: $passphrase)
+                    SecureField("Old passphrase", text: $passphrase)
                         .accessibilityIdentifier("access.passphrase")
                 } footer: {
-                    Text("Masukkan frasa sandi lama sekali untuk membuka dan memindahkan catatan yang sudah ada. Setelah itu, kamu tidak perlu memasukkannya lagi.")
+                    Text("Enter your old passphrase once to open and convert your existing entries. You will not need it again.")
                 }
                 if let message = access.errorMessage { Text(message).foregroundStyle(.secondary) }
-                Button("Buka catatan") {
+                Button("Open entries") {
                     isWorking = true
                     let secret = passphrase
                     passphrase = ""
@@ -24,11 +24,11 @@ struct PassphraseScreen: View {
                 }
                 .disabled(isWorking || passphrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityIdentifier("access.open")
-                if isWorking { ProgressView("Membuka…") }
+                if isWorking { ProgressView("Opening…") }
             }
-            .navigationTitle("Buka catatan yang sudah ada")
+            .navigationTitle("Open existing entries")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Batal") { operation?.cancel(); access.cancelAccess() } }
+            .toolbar { Button("Cancel") { operation?.cancel(); access.cancelAccess() } }
         }
         .privacySensitive()
         .onDisappear { passphrase = ""; operation?.cancel() }

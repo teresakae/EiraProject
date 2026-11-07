@@ -11,7 +11,7 @@ struct CoverPINScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onCancel) { Label("Catatan", systemImage: "chevron.left") }
+                Button(action: onCancel) { Label("Notes", systemImage: "chevron.left") }
                     .foregroundStyle(CoverStyle.amber)
                 Spacer()
             }.padding(20)
@@ -19,10 +19,10 @@ struct CoverPINScreen: View {
             Image(systemName: "lock")
                 .font(.system(size: 28)).foregroundStyle(CoverStyle.amber)
                 .frame(width: 92, height: 92).background(CoverStyle.pinned, in: Circle())
-            Text("Catatan ini terkunci")
+            Text("This note is locked")
                 .font(.custom("PlusJakartaSans-Regular", size: 24, relativeTo: .title2).bold())
                 .padding(.top, 26)
-            Text("Masukkan PIN untuk membuka catatan ini.")
+            Text("Enter your PIN to open this note.")
                 .font(.custom("PlusJakartaSans-Regular", size: 12, relativeTo: .caption))
                 .foregroundStyle(CoverStyle.secondary).padding(.top, 12)
             HStack(spacing: 16) {
@@ -33,7 +33,7 @@ struct CoverPINScreen: View {
                 }
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(digits.count) dari 4 angka dimasukkan")
+            .accessibilityLabel("\(digits.count) of 4 digits entered")
             .padding(.vertical, 40)
             Text(errorMessage ?? " ")
                 .font(CoverStyle.body)
@@ -42,11 +42,11 @@ struct CoverPINScreen: View {
                 .padding(.bottom, 8)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 10) {
                 ForEach(1...9, id: \.self) { number in digitButton(number) }
-                Button("Batal", action: onCancel).font(CoverStyle.body).frame(minHeight: 64)
+                Button("Cancel", action: onCancel).font(CoverStyle.body).frame(minHeight: 64)
                 digitButton(0)
                 Button { if !digits.isEmpty { digits.removeLast() } } label: {
                     Image(systemName: "delete.left").frame(maxWidth: .infinity, minHeight: 64)
-                }.accessibilityLabel("Hapus angka terakhir")
+                }.accessibilityLabel("Delete last digit")
             }
             .padding(.horizontal, 36)
             Spacer(minLength: 40)

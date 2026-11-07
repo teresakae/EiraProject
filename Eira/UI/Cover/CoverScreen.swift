@@ -17,22 +17,22 @@ struct CoverScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Catatan").font(.custom("PlusJakartaSans-Regular", size: 32, relativeTo: .largeTitle).bold())
-                        Text("\(notes.count) catatan").font(.caption).foregroundStyle(CoverStyle.secondary)
+                        Text("Notes").font(.custom("PlusJakartaSans-Regular", size: 32, relativeTo: .largeTitle).bold())
+                        Text("\(notes.count) notes").font(.caption).foregroundStyle(CoverStyle.secondary)
                     }
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass").foregroundStyle(CoverStyle.secondary)
-                        TextField("Cari catatan…", text: $search)
+                        TextField("Search notes…", text: $search)
                             .accessibilityIdentifier("cover.search")
                     }
                     .padding(14).background(.white, in: RoundedRectangle(cornerRadius: 12))
                     .overlay { RoundedRectangle(cornerRadius: 12).stroke(CoverStyle.border) }
-                    noteSection("Disematkan", pinned: true)
-                    noteSection("Terbaru", pinned: false)
+                    noteSection("Pinned", pinned: true)
+                    noteSection("Recent", pinned: false)
                     if notes.isEmpty {
-                        Text("Belum ada catatan").foregroundStyle(CoverStyle.secondary).padding(.vertical, 24)
+                        Text("No notes yet").foregroundStyle(CoverStyle.secondary).padding(.vertical, 24)
                     } else if filtered.isEmpty {
-                        Text("Catatan tidak ditemukan").foregroundStyle(CoverStyle.secondary)
+                        Text("No notes found").foregroundStyle(CoverStyle.secondary)
                     }
                     if let message = errorMessage ?? (access.gate == nil && !access.isInactive ? access.errorMessage : nil) {
                         Text(message).foregroundStyle(CoverStyle.secondary)
@@ -45,7 +45,7 @@ struct CoverScreen: View {
             .tint(CoverStyle.amber)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 HStack {
-                    Text("\(notes.count) catatan").font(.caption).foregroundStyle(CoverStyle.secondary)
+                    Text("\(notes.count) notes").font(.caption).foregroundStyle(CoverStyle.secondary)
                     Spacer()
                     Button { editing = CoverTask(title: "") } label: {
                         Image(systemName: "square.and.pencil").font(.title3)
@@ -53,13 +53,13 @@ struct CoverScreen: View {
                             .foregroundStyle(.white)
                             .background(CoverStyle.amber, in: RoundedRectangle(cornerRadius: 18))
                     }
-                    .accessibilityLabel("Catatan baru").accessibilityIdentifier("cover.add")
+                    .accessibilityLabel("New note").accessibilityIdentifier("cover.add")
                 }.padding(.horizontal, 20).padding(.vertical, 10).background(.white)
                     .overlay(alignment: .top) { Rectangle().fill(CoverStyle.border).frame(height: 1) }
             }
             .sheet(item: $editing, onDismiss: { Task { await load() } }) { note in
                 CoverNoteEditor(note: note) { updated in
-                    if updated.title == "eira" {
+                    if updated.title == "Eira" {
                         try await access.addTask(updated.title)
                     } else {
                         try access.store.saveCoverTask(updated)
@@ -80,8 +80,8 @@ struct CoverScreen: View {
                     Button { editing = note } label: { noteCard(note, pinned: pinned) }
                         .buttonStyle(.plain)
                         .contextMenu {
-                            Button(pinned ? "Lepas sematan" : "Sematkan", systemImage: "pin") { pin(note) }
-                            Button("Hapus catatan", systemImage: "trash", role: .destructive) { delete(note) }
+                            Button(pinned ? "Unpin" : "Pin", systemImage: "pin") { pin(note) }
+                            Button("Delete note", systemImage: "trash", role: .destructive) { delete(note) }
                         }
                 }
             }
@@ -96,7 +96,7 @@ struct CoverScreen: View {
                     .background(EiraTheme.sageTint.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
             }
             VStack(alignment: .leading, spacing: 5) {
-                if pinned { Label("DISEMATKAN", systemImage: "pin").font(.system(size: 9)).foregroundStyle(CoverStyle.secondary) }
+                if pinned { Label("PINNED", systemImage: "pin").font(.system(size: 9)).foregroundStyle(CoverStyle.secondary) }
                 Text(note.title).fontWeight(.semibold).lineLimit(1)
                 let summary = (note.checklist ?? []).map(\.text).joined(separator: " · ")
                 if let body = note.body, !body.isEmpty {
@@ -118,17 +118,17 @@ struct CoverScreen: View {
         var updated = note
         updated.isPinned = !(note.isPinned ?? false)
         do { try access.store.saveCoverTask(updated); Task { await load() } }
-        catch { errorMessage = "Perubahan belum tersimpan. Coba lagi." }
+        catch { errorMessage = "Changes could not be saved. Try again." }
     }
 
     private func delete(_ note: CoverTask) {
         do { try access.store.deleteCoverTask(id: note.id); Task { await load() } }
-        catch { errorMessage = "Catatan belum bisa dihapus. Coba lagi." }
+        catch { errorMessage = "The note could not be deleted. Try again." }
     }
 
     private func load() async {
         do { notes = try access.store.coverTasks(); errorMessage = nil }
-        catch { errorMessage = "Daftar catatan belum bisa dibuka. Coba lagi." }
+        catch { errorMessage = "The notes list could not be opened. Try again." }
     }
 }
 

@@ -8,7 +8,7 @@ final class BaseContractTests: XCTestCase {
         XCTAssertEqual(response.events.count, 1)
         XCTAssertFalse(response.reply.isEmpty)
         XCTAssertFalse(response.coverTask.isEmpty)
-        XCTAssertNotEqual(response.coverTask, "eira")
+        XCTAssertNotEqual(response.coverTask, "Eira")
         let entry = Entry(text: CannedServerClient.sampleEntryText)
         XCTAssertNotNil(response.events.first?.event(for: entry))
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(response)) as? [String: Any])
@@ -25,7 +25,7 @@ final class BaseContractTests: XCTestCase {
         XCTAssertTrue(response.notSure)
         XCTAssertTrue(response.faqAnswersUsed.isEmpty)
         XCTAssertTrue(response.articlesNamed.isEmpty)
-        XCTAssertTrue(response.answer.contains("belum bisa"))
+        XCTAssertTrue(response.answer.contains("cannot answer"))
         XCTAssertTrue(response.answer.contains("LBH APIK"))
         XCTAssertEqual(try JSONDecoder().decode(AskResponse.self, from: JSONEncoder().encode(response)), response)
     }

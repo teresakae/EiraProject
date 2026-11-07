@@ -23,7 +23,7 @@ struct CoverNoteEditor: View {
                 VStack(alignment: .leading, spacing: 24) {
                     Text(note.createdAt, format: .dateTime.day().month(.wide).year().hour().minute())
                         .font(.system(size: 10)).foregroundStyle(CoverStyle.secondary)
-                    TextField("Judul", text: $note.title, axis: .vertical)
+                    TextField("Title", text: $note.title, axis: .vertical)
                         .font(.custom("PlusJakartaSans-Regular", size: 28, relativeTo: .title).bold())
                         .autocorrectionDisabled().accessibilityIdentifier("cover.title")
                     Rectangle().fill(CoverStyle.border).frame(height: 1)
@@ -37,7 +37,7 @@ struct CoverNoteEditor: View {
                                         .font(.title2).foregroundStyle(CoverStyle.amber)
                                         .frame(minWidth: 30, minHeight: 44)
                                 }
-                                .accessibilityLabel(item.isCompleted ? "Tandai belum selesai" : "Tandai selesai")
+                                .accessibilityLabel(item.isCompleted ? "Mark incomplete" : "Mark complete")
                                 TextField("Item", text: Binding(
                                     get: { note.checklist?[index].text ?? "" },
                                     set: { note.checklist?[index].text = $0 }
@@ -47,11 +47,11 @@ struct CoverNoteEditor: View {
 
                             }
                             .contextMenu {
-                                Button("Hapus item", role: .destructive) { note.checklist?.removeAll { $0.id == item.id } }
+                                Button("Delete item", role: .destructive) { note.checklist?.removeAll { $0.id == item.id } }
                             }
                         }
                     }
-                    TextField("Tulis catatan…", text: Binding(
+                    TextField("Write a note…", text: Binding(
                         get: { note.body ?? "" }, set: { note.body = $0 }
                     ), axis: .vertical)
                         .lineLimit(8...20).accessibilityIdentifier("cover.body")
@@ -63,11 +63,11 @@ struct CoverNoteEditor: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { dismiss() } label: { Label("Catatan", systemImage: "chevron.left") }
+                    Button { dismiss() } label: { Label("Notes", systemImage: "chevron.left") }
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Selesai") { save() }
+                    Button("Done") { save() }
                         .disabled(note.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                         .accessibilityIdentifier("cover.save")
                 }
@@ -76,12 +76,12 @@ struct CoverNoteEditor: View {
                         if note.checklist == nil { note.checklist = [] }
                         note.checklist?.append(CoverChecklistItem(text: ""))
                     } label: { Image(systemName: "checklist") }
-                        .accessibilityLabel("Tambah item daftar")
+                        .accessibilityLabel("Add checklist item")
                     Spacer()
                     Button {
                         note.isPinned = !(note.isPinned ?? false)
                     } label: { Image(systemName: note.isPinned == true ? "pin.fill" : "pin") }
-                        .accessibilityLabel(note.isPinned == true ? "Lepas sematan" : "Sematkan")
+                        .accessibilityLabel(note.isPinned == true ? "Unpin" : "Pin")
                 }
             }
             .tint(CoverStyle.amber)
@@ -96,7 +96,7 @@ struct CoverNoteEditor: View {
         Task {
             defer { isSaving = false }
             do { try await onSave(note); dismiss() }
-            catch { errorMessage = "Catatan belum tersimpan. Coba lagi." }
+            catch { errorMessage = "The note could not be saved. Try again." }
         }
     }
 }

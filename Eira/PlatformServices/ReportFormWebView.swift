@@ -10,6 +10,7 @@ enum ReportClipboard {
 struct ReportFormScreen: View {
     let draft: ReportDraft
     let onClose: () -> Void
+    let onFinished: () -> Void
     @State private var errorMessage: String?
 
     var body: some View {
@@ -17,14 +18,16 @@ struct ReportFormScreen: View {
             Text(SafetyStrings.mockNotice).font(.callout).foregroundStyle(.secondary).padding(.horizontal)
             if let errorMessage {
                 Text(errorMessage).padding()
-                Button("Kembali ke draf", action: onClose)
+                Button("Back to draft", action: onClose)
                 Spacer()
             } else {
                 ReportFormWebView(draft: draft) { errorMessage = $0 }
             }
         }
-        .navigationTitle("Formulir uji").navigationBarTitleDisplayMode(.inline)
-        .toolbar { Button("Tutup", action: onClose) }
+        .navigationTitle("Test form").navigationBarTitleDisplayMode(.inline)
+        .background(EiraTheme.paper.ignoresSafeArea())
+        // A form that could not open returns to the draft; there was nothing she could send.
+        .toolbar { Button("Close") { errorMessage == nil ? onFinished() : onClose() } }
     }
 }
 
@@ -99,6 +102,9 @@ final class ReportFormLoader: NSObject, WKNavigationDelegate {
             if let options = ReportFields.options(for: name) { spec["options"] = options }
             spec["kind"] = ReportFields.isBoolean(name) ? "boolean"
                 : name == .victimAge ? "integer" : ReportFields.isPhone(name) ? "phone" : "text"
+            if let options = ReportFields.options(for: name) {
+                spec["optionLabels"] = Dictionary(uniqueKeysWithValues: options.map { ($0, SafetyStrings.choice($0)) })
+            }
             specs.append(spec)
         }
         // Arguments are data, including quotes, newlines and HTML in her text.

@@ -24,7 +24,7 @@ final class VoiceFlow {
             let permitted = await AVAudioApplication.requestRecordPermission()
             guard token == generation, !Task.isCancelled else { return }
             isWorking = false
-            guard permitted else { errorMessage = "Izinkan mikrofon di Pengaturan untuk merekam suara."; return }
+            guard permitted else { errorMessage = "Allow microphone access in Settings to record audio."; return }
             do {
                 let session = AVAudioSession.sharedInstance()
                 try session.setCategory(.record, mode: .default)
@@ -41,12 +41,20 @@ final class VoiceFlow {
                 isRecording = true
             } catch {
                 cancel()
-                errorMessage = "Rekaman belum bisa dimulai. Kamu tetap bisa mengetik."
+                errorMessage = "Recording could not start. You can still type."
             }
         }
     }
 
     func finish(into write: WriteFlow) {
+        finish { transcript in
+            // Preserve anything she already typed; she reviews the result before sending.
+            write.text += (write.text.isEmpty ? "" : "\n") + transcript
+            write.source = .voice
+        }
+    }
+
+    func finish(onTranscript: @escaping (String) -> Void) {
         guard isRecording, let url = audioURL else { return }
         recorder?.stop()
         recorder = nil
@@ -58,12 +66,10 @@ final class VoiceFlow {
             do {
                 let transcript = try await transcribeFile(url)
                 guard token == generation, !Task.isCancelled else { return }
-                // Preserve anything she already typed; she reviews the result before sending.
-                write.text += (write.text.isEmpty ? "" : "\n") + transcript
-                write.source = .voice
+                onTranscript(transcript)
             } catch {
                 if token == generation, !Task.isCancelled {
-                    errorMessage = "Suara belum bisa diubah menjadi teks. Kamu bisa merekam lagi atau mengetik."
+                    errorMessage = "Audio could not be transcribed. You can record again or type."
                 }
             }
         }
@@ -101,7 +107,7 @@ final class VoiceFlow {
         errorMessage = nil
         if let audioURL {
             do { try removeAudio(audioURL) }
-            catch { errorMessage = "Berkas suara belum bisa dihapus. Coba lagi." }
+            catch { errorMessage = "The audio file could not be deleted. Try again." }
         }
         try? AVAudioSession.sharedInstance().setActive(false)
     }

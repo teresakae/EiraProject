@@ -67,6 +67,7 @@ struct HTTPServerClient: ServerClient {
 
     func extract(_ request: ExtractRequest) async throws -> ExtractResponse { try await json("extract", request) }
     func ask(_ request: AskRequest) async throws -> AskResponse { try await json("ask", request) }
+    func talk(_ request: TalkRequest) async throws -> TalkResponse { try await json("talk", request) }
     func draft(_ request: DraftRequest) async throws -> DraftResponse { try await json("draft", request) }
 
     func transcribe(_ request: TranscribeRequest) async throws -> String {

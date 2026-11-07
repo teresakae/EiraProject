@@ -6,6 +6,7 @@ final class InMemoryEiraStore: EiraStore {
     private var storedEntries: [Entry] = []
     private var storedEvents: [Event] = []
     private var storedDraft: ReportDraft?
+    private var storedFacts: [TalkFact] = []
     private var storedTasks: [CoverTask] = []
 
     func entries() async throws -> [Entry] { storedEntries }
@@ -20,7 +21,9 @@ final class InMemoryEiraStore: EiraStore {
 
     func deleteEntry(id: UUID) async throws {
         storedEntries.removeAll { $0.id == id }
+        storedEntries = storedEntries.map { $0.removingAnswer(drawnFrom: id) }
         storedEvents.removeAll { $0.entryID == id }
+        storedFacts.removeAll { $0.sourceEntryID == id }
         storedDraft = storedDraft.map { draft in
             ReportDraft(fields: draft.fields.map { field in
                 field.sourceEntryID == id && field.status != .editedByHer
@@ -38,6 +41,8 @@ final class InMemoryEiraStore: EiraStore {
 
     func reportDraft() async throws -> ReportDraft? { storedDraft }
     func saveReportDraft(_ draft: ReportDraft) async throws { storedDraft = draft }
+    func talkFacts() async throws -> [TalkFact] { storedFacts }
+    func saveTalkFacts(_ facts: [TalkFact]) async throws { storedFacts = facts }
     func coverTasks() async throws -> [CoverTask] { storedTasks }
 
     func saveCoverTask(_ task: CoverTask) async throws {
@@ -54,5 +59,6 @@ final class InMemoryEiraStore: EiraStore {
         storedEntries.removeAll()
         storedEvents.removeAll()
         storedDraft = nil
+        storedFacts.removeAll()
     }
 }

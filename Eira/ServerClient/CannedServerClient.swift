@@ -11,14 +11,27 @@ struct CannedServerClient: ServerClient {
         // A fixed fixture must never attach invented events to a different input.
         let isSample = request.text == Self.sampleEntryText
         return ExtractResponse(events: isSample ? [sample] : [],
-                               coverTask: "Rapikan meja",
-                               reply: isSample ? "Kamu cerita lenganmu masih memar. Mau cerita lebih lanjut?"
-                                               : "Aku belum bisa mengurai catatan ini.")
+                               coverTask: "Tidy the desk",
+                               reply: isSample ? "You said your arm is still bruised. Would you like to say more?"
+                                               : "I could not process this entry yet.")
     }
 
     func ask(_ request: AskRequest) async throws -> AskResponse {
-        AskResponse(answer: "Aku belum bisa menjawab pertanyaan hukum ini. Kamu bisa bertanya langsung ke LBH APIK.",
+        AskResponse(answer: "I cannot answer this legal question yet. You can ask LBH APIK directly.",
                     faqAnswersUsed: [], articlesNamed: [], notSure: true)
+    }
+
+    func talk(_ request: TalkRequest) async throws -> TalkResponse {
+        if request.message?.hasSuffix("?") == true {
+            return TalkResponse(reply: "", isLegalQuestion: true, quickReplies: [], facts: [])
+        }
+        let hasSample = request.entries.contains { $0.text == Self.sampleEntryText }
+        return TalkResponse(
+            reply: request.message == nil ? "Where were you when this happened?" : "Did anyone else see or hear it?",
+            isLegalQuestion: false,
+            quickReplies: request.message == nil ? [] : ["Yes", "No one"],
+            facts: hasSample ? [.init(category: .when, value: "This morning", quote: "Tadi pagi"),
+                                .init(category: .what, value: "A plate thrown, bruising your arm", quote: "ngelempar piring")] : [])
     }
 
     func draft(_ request: DraftRequest) async throws -> DraftResponse {

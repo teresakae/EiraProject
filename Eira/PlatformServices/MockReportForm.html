@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
-  <title>Formulir uji</title>
+  <title>Test form</title>
   <style>
     :root { color-scheme: light dark; font-family: -apple-system, sans-serif; }
     body { margin: 0; padding: 20px; line-height: 1.5; }
@@ -18,15 +18,15 @@
   </style>
 </head>
 <body>
-  <h1>Formulir uji</h1>
-  <p>Isian ini hanya ada di ponselmu. Tombol kirim menampilkan isian yang diterima, tanpa mengirim ke mana pun.</p>
+  <h1>Test form</h1>
+  <p>These fields stay on your phone. The send button shows the received values without sending them anywhere.</p>
   <form id="report-form">
     <div id="fields"></div>
-    <button id="send" type="submit" disabled>Kirim ke formulir uji</button>
+    <button id="send" type="submit" disabled>Send to test form</button>
   </form>
   <section id="receipt" hidden aria-live="polite">
-    <h2>Isian yang diterima formulir uji</h2>
-    <p>Tidak ada yang dikirim ke SAPA atau tempat lain.</p>
+    <h2>Fields received by the test form</h2>
+    <p>Nothing was sent to SAPA or anywhere else.</p>
     <pre id="received-values"></pre>
   </section>
   <script>
@@ -44,12 +44,12 @@
         let control;
         if (spec.options || spec.kind === 'boolean') {
           control = document.createElement('select');
-          control.add(new Option('Kosong', ''));
+          control.add(new Option('Empty', ''));
           if (spec.kind === 'boolean') {
-            control.add(new Option('Ya', 'true'));
-            control.add(new Option('Tidak', 'false'));
+            control.add(new Option('Yes', 'true'));
+            control.add(new Option('No', 'false'));
           } else {
-            for (const option of spec.options) control.add(new Option(option, option));
+            for (const option of spec.options) control.add(new Option(spec.optionLabels?.[option] || option, option));
           }
         } else {
           control = document.createElement(spec.name === 'description' ? 'textarea' : 'input');

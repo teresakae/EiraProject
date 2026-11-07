@@ -135,14 +135,14 @@ final class AskReportTests: XCTestCase {
         for faq in [[], [1, 2, 3], [14]] as [[Int]] {
             XCTAssertFalse(AskFlow.needsLawyerCaveat(.init(answer: "Contoh uji.", faqAnswersUsed: faq, articlesNamed: [], notSure: true)))
         }
-        XCTAssertTrue(SafetyStrings.lawyerCaveat.contains("belum ditinjau"))
+        XCTAssertTrue(SafetyStrings.lawyerCaveat.contains("not been reviewed"))
     }
 
     func testCannedHandoffAppearsAsReplyAndFailureRetriesWithoutDuplicatingQuestion() async throws {
         let store = InMemoryEiraStore()
         let canned = AskFlow(dependencies: .init(store: store))
         _ = await canned.send("Apa pilihanku?")
-        XCTAssertTrue(canned.turns.first?.response?.answer.contains("belum bisa") == true)
+        XCTAssertTrue(canned.turns.first?.response?.answer.contains("cannot answer") == true)
         XCTAssertTrue(canned.turns.first?.response?.answer.contains("LBH APIK") == true)
         let client = RecordingReportClient()
         await client.setFailure(true)
@@ -181,6 +181,76 @@ final class AskReportTests: XCTestCase {
         XCTAssertFalse(String(decoding: try JSONEncoder().encode(request), as: UTF8.self).contains(entry.text))
         let copied = await flow.copyText(for: .description)
         XCTAssertNil(copied)
+    }
+
+    func testAnswersSurviveLeavingTalkAndGoWithTheirSources() async throws {
+        let store = InMemoryEiraStore()
+        let story = Entry(text: CannedServerClient.sampleEntryText)
+        try await store.saveEntry(story)
+        let first = AskFlow(dependencies: .init(store: store))
+        let sent = await first.send("Will he be arrested?")
+        XCTAssertTrue(sent)
+        let answer = try XCTUnwrap(first.turns.first?.response)
+
+        let reopened = AskFlow(dependencies: .init(store: store))
+        await reopened.load()
+        XCTAssertEqual(reopened.turns.first?.response, answer)
+
+        var limited = story
+        limited.allowedUses.legalGuidance = false
+        try await store.saveEntry(limited)
+        await reopened.load()
+        XCTAssertNil(reopened.turns.first?.response, "Hidden while its source is limited")
+        try await store.saveEntry(story)
+        await reopened.load()
+        XCTAssertEqual(reopened.turns.first?.response, answer, "Back when the permission returns")
+
+        try await store.deleteEntry(id: story.id)
+        let saved = try await store.entries().first { $0.kind == .question }
+        XCTAssertNil(saved?.talkAnswer, "Deleting a source deletes the answer drawn from it")
+
+        let id = try XCTUnwrap(reopened.turns.first?.id)
+        await reopened.deleteQuestion(id)
+        XCTAssertTrue(reopened.turns.isEmpty)
+    }
+
+    func testEmptyDraftFillsOnOpenOnlyOnceAndNeverSendsLimitedEntries() async throws {
+        let store = InMemoryEiraStore()
+        let client = RecordingReportClient()
+        var entry = Entry(text: CannedServerClient.sampleEntryText)
+        entry.allowedUses.report = false
+        try await store.saveEntry(entry)
+        let flow = ReportFlow(dependencies: .init(store: store, serverClient: client))
+        await flow.load()
+        await flow.fillIfEmpty()
+        var drafts = await client.drafts()
+        XCTAssertTrue(drafts.isEmpty, "Nothing allowed for the report, so nothing is sent")
+
+        entry.allowedUses.report = true
+        try await store.saveEntry(entry)
+        await flow.fillIfEmpty()
+        drafts = await client.drafts()
+        XCTAssertEqual(drafts.count, 1)
+        XCTAssertNotNil(flow.draft.fields.first { $0.fieldName == .description }?.value)
+
+        await flow.fillIfEmpty()
+        drafts = await client.drafts()
+        XCTAssertEqual(drafts.count, 1, "A filled draft is not rebuilt on open")
+    }
+
+    func testClearingEveryFieldDoesNotRefillOnOpen() async throws {
+        let store = InMemoryEiraStore()
+        let client = RecordingReportClient()
+        try await store.saveEntry(Entry(text: CannedServerClient.sampleEntryText))
+        let flow = ReportFlow(dependencies: .init(store: store, serverClient: client))
+        await flow.refresh()
+        for field in flow.draft.fields where field.value != nil {
+            let cleared = await flow.edit(field.fieldName, text: "")
+            XCTAssertTrue(cleared)
+        }
+        await flow.fillIfEmpty()
+        let drafts = await client.drafts()
+        XCTAssertEqual(drafts.count, 1)
     }
 
     func testEditsIncludingClearsSurviveRefreshAndReopening() async throws {
@@ -302,6 +372,62 @@ final class AskReportTests: XCTestCase {
         for text in [SafetyStrings.recipient, SafetyStrings.unknowns, SafetyStrings.risks, SafetyStrings.anonymity] {
             XCTAssertFalse(text.isEmpty)
         }
+    }
+
+    func testAfterSendAppearsOnlyAfterFormAndNotYetReturnsToReview() async throws {
+        let store = InMemoryEiraStore()
+        try await store.saveEntry(Entry(text: CannedServerClient.sampleEntryText))
+        let flow = ReportFlow(dependencies: .init(store: store))
+        await flow.refresh()
+        flow.finishForm()
+        XCTAssertEqual(flow.stage, .review)
+        await flow.prepareConfirmation()
+        flow.finishForm()
+        XCTAssertEqual(flow.stage, .confirmation)
+        await flow.openConfirmedForm()
+        flow.finishForm()
+        XCTAssertEqual(flow.stage, .afterSend)
+        await flow.prepareConfirmation()
+        XCTAssertEqual(flow.stage, .confirmation)
+        XCTAssertNotNil(flow.deliveryDraft)
+    }
+
+    func testEditFromReviewUpdatesWhatTheFormReceives() async throws {
+        let flow = ReportFlow(dependencies: .init(store: InMemoryEiraStore()))
+        await flow.prepareConfirmation()
+        let edited = await flow.edit(.provinceCity, text: "Kota Bekasi, Jawa Barat")
+        XCTAssertTrue(edited)
+        await flow.openConfirmedForm()
+        XCTAssertEqual(flow.stage, .form)
+        XCTAssertEqual(flow.formDraft?.fields.first { $0.fieldName == .provinceCity }?.value, .text("Kota Bekasi, Jawa Barat"))
+    }
+
+    func testContactLineIsVisibleInFormDraftAndNeverSavedOrOverLimit() async throws {
+        let store = InMemoryEiraStore()
+        let flow = ReportFlow(dependencies: .init(store: store))
+        _ = await flow.edit(.description, text: "Catatan buatan.")
+        await flow.prepareConfirmation()
+        let description = { flow.formDraft?.fields.first { $0.fieldName == .description }?.value }
+        // Nothing is added until she chooses.
+        XCTAssertEqual(flow.contactPreference, .noPreference)
+        XCTAssertEqual(description(), .text("Catatan buatan."))
+        for preference in [ReportFlow.ContactPreference.noWhatsApp, .whatsAppOK] {
+            flow.contactPreference = preference
+            let line = try XCTUnwrap(SafetyStrings.contactLine(preference))
+            XCTAssertEqual(description(), .text("Catatan buatan.\n\n\(line)"))
+        }
+        let saved = try await store.reportDraft()
+        XCTAssertEqual(saved?.fields.first { $0.fieldName == .description }?.value, .text("Catatan buatan."))
+
+        let full = String(repeating: "a", count: 5000)
+        let fullDraft = ReportDraft(fields: [.init(fieldName: .description, value: .text(full), status: .editedByHer)])
+        XCTAssertEqual(ReportFlow.withContactLine(fullDraft, preference: .noWhatsApp), fullDraft)
+    }
+
+    func testTrackerSampleNeverShowsOnTheRealTarget() {
+        XCTAssertFalse(ReportTrackerSample.isAvailable(for: .real))
+        XCTAssertTrue(ReportTrackerSample.isAvailable(for: .mock))
+        XCTAssertTrue(SafetyStrings.trackerStages.indices.contains(ReportTrackerSample.currentStage))
     }
 
     func testFailedRefreshKeepsSavedEdits() async throws {
