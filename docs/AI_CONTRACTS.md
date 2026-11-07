@@ -45,7 +45,7 @@ Output:
 | events.quote | text | An exact substring of the entry text. |
 | events.pkdrt_type | one of five values | `fisik`, `psikis`, `seksual`, `penelantaran`, `tidak_yakin`. |
 | cover_task | text | One unrelated, ordinary task title. See cover task rules. |
-| reply | text | In Indonesian. A short reply shown in the chat under her message. See reply rules. Default until the team settles how replies work. |
+| reply | text | In English. A short reply shown in the chat under her message. See reply rules. Default until the team settles how replies work. |
 
 Rules:
 
@@ -61,7 +61,7 @@ Rules:
 
 That the AI replies in Stage 1 is DECIDED. How it replies is OPEN (open decision 5 in `PRODUCT.md`). The `reply` field and the rules below are the build default, so the build is not blocked. Expect them to change.
 
-1. Write in Indonesian, using "kamu" for her and "aku" for the app.
+1. Write in English, addressing her as "you" and the app as "I". Preserve original quotes.
 2. Add no fact she did not write. No new detail, name, date, or event.
 3. Never give a verdict. Never say someone committed a crime or is a perpetrator.
 4. Never nudge her toward reporting, leaving, or staying.
@@ -79,7 +79,7 @@ Output (default shape, confirm on the day):
 
 | Field | Type | Rule |
 |---|---|---|
-| answer | text | In Indonesian. Plain language. |
+| answer | text | In English. Plain language. |
 | faq_answers_used | list of numbers | Which FAQ answers the reply relies on. Lets plain code add the lawyer caveat. |
 | articles_named | list of text | Articles named, as information. Can be empty. |
 | not_sure | true or false | True when an entry is unclear or the FAQ does not cover it. |
@@ -131,7 +131,7 @@ Rules:
 1. Answer her fear first, law second. If she asks "Will he be arrested?", give a direct answer before naming any article.
 2. Use her words and history, for example "Kamu tadi cerita soal uang belanja". This is how the app keeps its tell-it-once promise. Our research notes report survivors asking domestic-violence chatbots for better empathy and memory (AinoAid). Only use entries that are allowed for that use. In Stage 1 the default is the new entry only (see Reply, rule 6), so this rule applies within that entry until the team settles how replies work.
 3. Keep it short, one idea per turn, in chat-style sentences. No bullet lists, no headings, no dump of articles.
-4. Match her register. Use casual "kamu" and "aku", the way she writes. Never formal "Anda".
+4. Match her register. Use conversational English, with "you" and "I".
 5. Ban stock lines such as "Saya memahami perasaan Anda" and "Terima kasih sudah berbagi". Do not open every turn the same way.
 6. Ask before advising, one question at a time. A 2026 audit of domestic-violence chatbots found that few asked follow-up questions before advising (Poveda et al., FAccT 2026, per our research notes).
 7. Do not fake it. Never claim feelings or personal experience. Be warm, but honest that this is an app.
@@ -175,7 +175,7 @@ Purpose: turn a voice clip into text.
 
 Input: the audio file, with Indonesian and English language hints (`languages: ["id", "en"]`, PRODUCT C14). Use the SDK for multipart encoding. Do not also send a singular `language` field to OpenAI.
 
-Output: text in the spoken language, without translation. It goes into the text input as her message. She can read it before it counts. The app's UI and AI replies remain Indonesian.
+Output: text in the spoken language, without translation. It goes into the text input as her message. She can read it before it counts. The app's UI and AI replies are English (C17).
 
 Rules:
 
@@ -184,6 +184,29 @@ Rules:
 3. Accepted formats include mp3, mp4, mpeg, mpga, m4a, wav, webm, up to 25 MB.
 4. Transcripts may have odd spellings. The quote check compares against the exact text sent to the model, not what she said.
 5. Quality for Indonesian mixed with Javanese is UNVERIFIED. Test T5 decides keep or drop. Drop voice if clip A (plain Indonesian) gets content words wrong (violence words, who, when). A wrong word in a report is worse than no voice.
+
+## Call 5: Talk
+
+Purpose: ask one follow-up question at a time so she can tell her story once (C19). It never gives legal information.
+
+Input: `message` (her latest words, or null at the start or when she skips), the Talk conversation so far, and entries allowed for legal guidance with their events. Never entries limited from legal guidance.
+
+Output:
+
+| Field | Type | Rule |
+|---|---|---|
+| reply | text | In English. One short question, or a short acknowledgement and a question. Follows the voice rules. |
+| is_legal_question | true or false | True when her latest message asks what the law, police or a court may do. The app then uses call 2 and shows that answer instead. |
+| quick_replies | list of text | Up to two short answers to the question. The server caps the list. The app adds Skip itself. |
+| facts | list | Who, what, when and where she stated. Each has `category`, `value` and `quote`. |
+| facts.quote | text | An exact substring of her words. Plain code drops a fact whose quote fails the quote check. |
+
+Rules:
+
+1. No law: no article, statute, penalty, verdict or case outcome. The server rejects a reply containing them and tries the fallback model.
+2. Add no fact she did not write. AI text and tapped quick replies are never quote sources on the phone.
+3. Never nudge her toward reporting, leaving or staying.
+4. If she skips, move on without repeating the question.
 
 ## Quote check
 

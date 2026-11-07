@@ -7,7 +7,7 @@ Status: DECIDED as the source for the report fields. Re-verify against the live 
 ## Rules from the source file
 
 - Every report from this app is "tidak darurat" (not urgent). "darurat" is not a field here.
-- The phone number is required on SAPA's own form but optional in this app.
+- The phone number is optional on SAPA's own form and in this app (owner confirmed, 7 Nov 2026; C23).
 - A field with no source in her words stays empty. She can fill it herself.
 - Text fields accept at most 5000 characters.
 
@@ -31,7 +31,7 @@ Status: DECIDED as the source for the report fields. Re-verify against the live 
 | `korban_trusted_person` | text, digits only | no | Phone number of an adult the victim trusts (optional). |
 | `reporter_fullname` | text | yes, unless `anonymous` is yes | The reporter's name. |
 | `anonymous` | yes or no | no | Does the reporter want to stay anonymous? |
-| `contact_number` | text, digits only | no (SAPA's own form requires it) | The reporter's phone number. |
+| `contact_number` | text, digits only | no | The reporter's phone number. |
 
 ## Required fields: the rule
 

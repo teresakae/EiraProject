@@ -164,3 +164,35 @@ No third-party iOS libraries. No database. Add nothing else without asking the t
 ## 9. Distribution
 
 For the hackathon, run from Xcode on a simulator or a team iPhone. After the event there is a risk: NNEDV (2017, per our notes) says the Apple App Store restricts disguised apps, or requires the real purpose in the description, which can defeat the disguise. UNVERIFIED for 2026.
+
+## 10. Report tracker: path to live status (PROPOSED, C24)
+
+Today the tracker is a fixed sample in mock builds only (`Eira/UI/Report/ReportTrackerScreen.swift`). Going live cannot be done by Eira alone. Without SAPA providing status, a tracker would be guessing, so it stays a sample until the steps below are done.
+
+**What SAPA 129 / KemenPPPA must agree to**
+
+1. A written data-sharing agreement, including personal-data law review. Nothing live ships before this.
+2. A tracking code for each report, shown on the form's confirmation page. UNVERIFIED: whether the form gives any reference today.
+3. A status lookup that takes the code and returns one agreed stage and an updated time. It returns no names, story, staff notes or details about her husband.
+4. Staff, including regional service units (UPTD PPA), keeping that stage up to date. UNVERIFIED: whether case status flows back from regional units to SAPA, and whether an existing KemenPPPA case system could supply it. This is likely the hardest step, because it depends on their operations rather than our code.
+5. An option to mark a report "updates in the app only, no WhatsApp". This is the direct fix for C23, and it is SAPA's decision.
+
+**How Eira would do it**
+
+| Part | Plan | Rule it keeps |
+|---|---|---|
+| Saving the code | Read it from the form page, or she types it. Stored in the encrypted store and removed by Delete everything. | Rule 3 |
+| Checking | Only when she taps "Check for update". No background refresh, polling or alerts. | Rule 8 |
+| Request route | Phone to our server to SAPA. The server holds SAPA's API key, adds it and forwards the reply. It keeps no database and no logs of codes. The phone only contacts our neutral domain. | Rules 3, 6 and 7 |
+| Wire call | A sixth `ServerClient` call, `report_status`, with a fixed list of stages and a test fixture. | |
+| Screen | Replace the sample with the saved code and returned stage. Remove the sample notice and the mock-only gate. | |
+| Failure | Show "could not check" and the last checked time. Never show an old stage as current. | Rule 9 |
+
+**Risks to settle with SAPA**
+
+- The code works like a password: anyone holding it can see the stage. It needs to be long and random, with rate limits and an expiry on SAPA's side.
+- A wrong or stale stage could give her false reassurance, so the screen must show the updated time and never promise timing.
+- The saved code is evidence that she reported if someone opens the private area. The privacy text must say so.
+- Test with survivors and service staff before release. Nothing here has been tested with them.
+
+**Order of work:** agreement, then lookup and test environment from SAPA, then server forwarding, then saved code, then the live screen. Test against SAPA's test environment only, and never with test data on the real form (rule 12).

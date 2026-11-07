@@ -12,7 +12,7 @@ It lowers the chance of casual discovery. It does not stop a determined search, 
 
 ## The "he opens it" test
 
-The cover must survive inspection. Someone who opens the app must see a working to-do list, not a static fake screen. Nothing on any cover screen mentions help, abuse, reporting, or the real app. C11 in `PRODUCT.md` records the cover and access decision: adding a new task named exactly `eira` opens the actual app; any other title adds an ordinary task. The fixed trigger is discoverable and is not an encryption secret. C16 replaces direct access: saving a note titled exactly `eira` opens the PIN screen, and the fixed PIN `1111` opens the private area. A random encryption key is held by this phone. Anyone using the unlocked phone who knows `eira` and the fixed PIN can open the records. Existing passphrase-protected records require one unlock to convert without erasing them. Deletion removes private records and the device-held key; later access opens an empty private area.
+The cover must survive inspection. Someone who opens the app must see a working to-do list, not a static fake screen. Nothing on any cover screen mentions help, abuse, reporting, or the real app. C11 in `PRODUCT.md` records the cover and access decision: adding a new task named exactly `eira` opens the actual app; any other title adds an ordinary task. The fixed trigger is discoverable and is not an encryption secret. C16 replaces direct access: saving a note titled exactly `Eira` (C22) opens the PIN screen, and the fixed PIN `1111` opens the private area. A random encryption key is held by this phone. Anyone using the unlocked phone who knows `Eira` and the fixed PIN can open the records. Existing passphrase-protected records require one unlock to convert without erasing them. Deletion removes private records and the device-held key; later access opens an empty private area.
 
 ## Rules
 
@@ -27,7 +27,7 @@ The cover must survive inspection. Someone who opens the app must see a working 
 
 The app must say, in plain words, where she can read it before she writes anything real:
 
-1. What she writes is encrypted on her phone with a device-held key. Access requires a fixed PIN; anyone using the unlocked phone who knows `eira` and the PIN can open her notes.
+1. What she writes is encrypted on her phone with a device-held key. Access requires a fixed PIN; anyone using the unlocked phone who knows `Eira` and the PIN can open her notes.
 2. To answer her or fill the draft, her text is decrypted on the phone and sent through our server to OpenAI.
 3. OpenAI can keep prompts and answers in abuse-monitoring logs for up to 30 days. Our server keeps no copy.
 4. Voice is turned into text and the audio is thrown away.
@@ -49,7 +49,7 @@ DRAFT: the corrected lines in the table below (With whom, Unknowns, Anonymity) a
 | She sends it | The app fills the form but does not send it. She presses the form's send button herself. |
 | Unknowns | We do not know whether or when the service would contact her husband, because no rule on that was found. On paper, the national service standard sets response times: immediately for high risk, about 6 hours for medium, and within 3 days for low. Outreach visits are set at 1, 2 or 3 days. We do not know how fast the service answers in practice. The mediation the unit may offer is something she can refuse. DRAFT, based on AI research, not lawyer-reviewed. Team to approve. |
 | Risks | Police often push settlement. Of 105 legal cases Komnas Perempuan tracked in 2025, 18 involved criminalising the wife. |
-| Anonymity | The SAPA site has an anonymous option and says it keeps identity confidential, per FAQ answer 2. Confidential does not mean he can never find out. To get some help she will likely need to give her identity to the service. Its standard intake asks for name, address and contact details, and SAPA's own form asks for a phone number, so anonymous may not mean the service cannot reach her. If a court case starts, he would normally learn of it, because he is the other party in a divorce, and a criminal case or protection order also involves him. No source says her name can be kept from him. DRAFT, based on AI research, not lawyer-reviewed. Team to approve. |
+| Anonymity | The SAPA site has an anonymous option and says it keeps identity confidential, per FAQ answer 2. Confidential does not mean he can never find out. To get some help she will likely need to give her identity to the service. Its standard intake asks for name, address and contact details, and SAPA's own form has a phone number field she can leave empty, so anonymous may not mean the service cannot reach her. If a court case starts, he would normally learn of it, because he is the other party in a divorce, and a criminal case or protection order also involves him. No source says her name can be kept from him. DRAFT, based on AI research, not lawyer-reviewed. Team to approve. |
 | Tone | No urging. No "are you sure you do not want to report". It informs and lets her stop. (C8) |
 
 ## Banned claims
