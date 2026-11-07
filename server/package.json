@@ -1,0 +1,14 @@
+{
+  "name": "eira-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.x" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env.local dev.js",
+    "test": "node --test test/*.test.js",
+    "test:live": "node --env-file-if-exists=.env.local --test test/live.js",
+    "build": "node scripts/build.js"
+  },
+  "dependencies": { "openai": "^6.0.0" }
+}
