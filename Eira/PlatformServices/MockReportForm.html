@@ -6,28 +6,41 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <title>Test form</title>
   <style>
-    :root { color-scheme: light dark; font-family: -apple-system, sans-serif; }
-    body { margin: 0; padding: 20px; line-height: 1.5; }
+    :root { color-scheme: light; font-family: -apple-system, sans-serif; --paper: #f6f3ec; --surface: #fcfbf7; --sage: #3f5e4a; --tint: #e4ebdc; --ink: #26302a; }
+    body { margin: 0; padding: 20px; line-height: 1.5; background: var(--paper); color: var(--ink); }
     h1 { font-size: 1.5rem; margin: 0 0 8px; }
     p { margin: 0 0 24px; }
     label { display: block; margin: 22px 0 6px; font-weight: 600; }
-    input, select, textarea, button { font: inherit; box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #888; border-radius: 8px; background: Canvas; color: CanvasText; }
+    input, select, textarea { font: inherit; box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid var(--tint); border-radius: 12px; background: var(--surface); color: var(--ink); }
     textarea { min-height: 120px; }
-    button { margin-top: 28px; font-weight: 600; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+    button { font: inherit; box-sizing: border-box; width: 100%; min-height: 52px; margin-top: 28px; padding: 12px; border: 0; border-radius: 26px; font-weight: 600; background: var(--sage); color: var(--paper); }
+    button:disabled { opacity: 0.45; }
+    .notice { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 24px; padding: 14px 16px; border-radius: 12px; background: var(--tint); color: var(--sage); font-weight: 600; }
+    h2 { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sage); margin: 24px 0 8px; }
+    .card { margin: 0; padding: 0 16px; border: 1px solid var(--tint); border-radius: 12px; background: var(--surface); }
+    .row { padding: 12px 0; border-top: 1px solid var(--tint); }
+    .row:first-child { border-top: 0; }
+    dt { font-size: 0.85rem; color: var(--sage); }
+    dd { margin: 2px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+    dd.empty { color: #7b857e; }
+    .hint { margin: 6px 0 0; font-size: 0.85rem; color: var(--sage); }
   </style>
 </head>
 <body>
-  <h1>Test form</h1>
-  <p>These fields stay on your phone. The send button shows the received values without sending them anywhere.</p>
-  <form id="report-form">
-    <div id="fields"></div>
-    <button id="send" type="submit" disabled>Send to test form</button>
-  </form>
+  <section id="entry">
+    <h1>Test form</h1>
+    <p>These fields stay on your phone. The send button shows the received values without sending them anywhere.</p>
+    <form id="report-form">
+      <div id="fields"></div>
+      <button id="send" type="submit" disabled>Send to test form</button>
+    </form>
+  </section>
   <section id="receipt" hidden aria-live="polite">
-    <h2>Fields received by the test form</h2>
-    <p>Nothing was sent to SAPA or anywhere else.</p>
-    <pre id="received-values"></pre>
+    <h1>This is what the form received</h1>
+    <p class="notice">Nothing was sent to SAPA or anywhere else. This is a test form.</p>
+    <div id="received-groups"></div>
+    <!-- The exact values, kept for the automated check that the form received her draft. -->
+    <pre id="received-values" hidden></pre>
   </section>
   <script>
     'use strict';
@@ -77,9 +90,56 @@
           : spec.kind === 'integer' ? Number(text) : text;
       }
       document.getElementById('received-values').textContent = JSON.stringify(values, null, 2);
+      showReceived(values);
+      document.getElementById('entry').hidden = true;
       document.getElementById('receipt').hidden = false;
-      document.getElementById('receipt').scrollIntoView({ block: 'start' });
+      window.scrollTo(0, 0);
     });
+
+    const receiptGroups = [
+      ['What happened', ['is_victim', 'level_concern', 'relationship_with_victim', 'incident_time', 'location', 'province_city', 'description']],
+      ['Person affected', ['korban_fullname', 'korban_gender', 'korban_age', 'korban_disabilities', 'korban_disabilities_type', 'korban_contact_number', 'korban_trusted_person']],
+      ['You', ['reporter_fullname', 'anonymous', 'contact_number']],
+    ];
+
+    function displayValue(spec, value) {
+      if (value === null) return 'Left empty';
+      if (spec.kind === 'boolean') return value ? 'Yes' : 'No';
+      return spec.optionLabels?.[value] || String(value);
+    }
+
+    // Values reach the page only through textContent, so her words are never treated as HTML.
+    function showReceived(values) {
+      const container = document.getElementById('received-groups');
+      container.replaceChildren();
+      for (const [title, names] of receiptGroups) {
+        const heading = document.createElement('h2');
+        heading.textContent = title;
+        const card = document.createElement('dl');
+        card.className = 'card';
+        for (const name of names) {
+          const spec = fieldSpecs.find((item) => item.name === name);
+          // The type of disability only applies when she said she has one.
+          if (!spec || (name === 'korban_disabilities_type' && values.korban_disabilities !== true)) continue;
+          const row = document.createElement('div');
+          row.className = 'row';
+          const label = document.createElement('dt');
+          label.textContent = spec.label;
+          const value = document.createElement('dd');
+          value.textContent = displayValue(spec, values[name]);
+          if (values[name] === null) value.className = 'empty';
+          row.append(label, value);
+          if (name === 'description' && values[name] !== null) {
+            const hint = document.createElement('p');
+            hint.className = 'hint';
+            hint.textContent = 'Written in Indonesian, because the real form is.';
+            row.append(hint);
+          }
+          card.append(row);
+        }
+        container.append(heading, card);
+      }
+    }
   </script>
 </body>
 </html>
